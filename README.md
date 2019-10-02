@@ -22,7 +22,8 @@ There are two datasets available as inputs for fungiclassifiers. The "small" dat
 
 [top50 UNITE](https://github.com/vuthuyduong/fungiclassifiers/tree/master/data/top50UNITE) the large demo dataset. 
 
-## [Classifiers] (https://github.com/vuthuyduong/fungiclassifiers/tree/master/classifiers)
+## Classifiers
+[Classifiers](https://github.com/vuthuyduong/fungiclassifiers/tree/master/classifiers)
 
 
 
