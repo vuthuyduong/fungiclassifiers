@@ -58,3 +58,13 @@ BLAST/classifyBLAST.py testdataset.fas traindataset.fas traindataset.classificat
 where 0.97 is the optimal threshold that we use for classifying the sequences at the current level.
 
 ## Training and classifying using the RDP model
+
+To train the RDP model at the genus level, use the following command:
+
+RDP/trainRDP.py traindataset.fas traindataset.classification 5 path_to_the_file_classifer.jar
+
+To classify the test dataset using the classifier obtained by the RDP training, use the following command:
+
+RDP/classifyRDP.py RDP_classifier testdataset.fas path_to_the_file_classifer.jar
+
+
