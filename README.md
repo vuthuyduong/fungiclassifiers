@@ -1,6 +1,6 @@
 # Fungiclassifiers
 
-Fungiclassifiers is the official implementation for the evaluation of the BLAST classification, naive Bayesian RDP classifier (Wang et al. 2007), and two deep learning based classifiers using two different models namely convolutional neural network (CNN) (LeCun et al. 2015) and deep belief network (DBN) (Hinton et al. 2006). We aimed to study if deep learning can improve fungal classification. Fungiclassifiers consists of four folders: Classification, Evaluation, Data, and Classifiers.
+Fungiclassifiers is the official implementation for the evaluation of the BLAST classification (Altschul et al. 1977), naive Bayesian RDP classifier (Wang et al. 2007), and two deep learning based classifiers using two different models namely convolutional neural network (CNN) (LeCun et al. 2015) and deep belief network (DBN) (Hinton et al. 2006). We aimed to study if deep learning can improve fungal classification. Fungiclassifiers consists of four folders: Classification, Evaluation, Data, and Classifiers.
 
 The [Classification](https://github.com/vuthuyduong/fungiclassifiers/tree/master/classification) folder consists of a training and a classifying scripts for each of the classification methods.
 
@@ -19,6 +19,8 @@ The training, classifying in the Classification, and the Evaluation of the BLAST
 Duong Vu (d.vu@wi.knaw.nl)
 
 ## References
+Altschul, S.F., Madden, T.L., Schäffer A.A., et al. (1997). Gapped BLAST and PSI-BLAST: a new generation protein database search programs. Nucleic Acids Res 25, 3389-3402.
+
 Wang, Q., Garrity, G. M., Tiedje, J. M., et al. (2007). Naive Bayesian classifier for rapid assignment of rRNA sequences into the new bacterial taxonomy. Ap-plied and environmental microbiology 73, 5261–5267. 
 
 LeCun, Y., Bengio, Y., Hinton, G. (2015). Deep learning. Nature, 521, 436-44.
