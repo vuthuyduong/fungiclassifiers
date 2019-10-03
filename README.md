@@ -13,6 +13,13 @@ The [classifiers](https://github.com/vuthuyduong/fungiclassifiers/tree/master/cl
 ## Implementation
 The training, classifying in the Classification, and the Evaluation of the BLAST, RDP, CNN and DBN models were implemented in Python 2.7. We used the Keras library (www.keras.io) with tensorflow backend for CNN and the code available at https://github.com/albertbup/deep-belief-network for DBN. The RDP Clas-sifier was downloaded from https://github.com/rdpstaff/classifier.  For the BLAST classification, BLAST version 2.6.0 was installed. The fMLC tool to cluster the sequences for predicting optimal thresholds for taxonomic classification were downloaded from https://github.com/FastMLC/fMLC. 
 
+## Installing necessary packages using Conda
+
+conda install keras
+conda install scikit-learn
+conda install spicy
+conda install Theano
+conda install Biopython
 
 ## Contact person 
 
