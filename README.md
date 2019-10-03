@@ -1,10 +1,10 @@
 # Fungiclassifiers
 
-Fungiclassifiers is the official implementation for the evaluation of the BLAST classification (Altschul et al. 1977), naive Bayesian RDP classifier (Wang et al. 2007), and two deep learning based classifiers using two different models namely convolutional neural network (CNN) (LeCun et al. 2015) and deep belief network (DBN) (Hinton et al. 2006). We aimed to study if deep learning can improve fungal classification. Fungiclassifiers consists of four folders: Classification, Evaluation, Data, and Classifiers.
+Fungiclassifiers is the official implementation for the evaluation of the BLAST classification (Altschul et al. 1977), naive Bayesian RDP classifier (Wang et al. 2007), and two deep learning based classifiers using two different models namely convolutional neural network (CNN) (LeCun et al. 2015) and deep belief network (DBN) (Hinton et al. 2006). We aimed to study if deep learning can improve fungal classification. Fungiclassifiers consists of four folders: model, evaluation, data, and Classifiers.
 
-The [models](https://github.com/vuthuyduong/fungiclassifiers/tree/master/models) folder consists of training and classifying scripts of each of the classification methods.
+The [models](https://github.com/vuthuyduong/fungiclassifiers/tree/master/models) folder consists of training and classifying scripts of each of the classification models.
 
-The [evaluation](https://github.com/vuthuyduong/fungiclassifiers/tree/master/evaluation) folder consists of scripts for the evaluation of each of the classification methods on the same traing and testing dataset.
+The [evaluation](https://github.com/vuthuyduong/fungiclassifiers/tree/master/evaluation) folder consists of scripts for the evaluation of each of the classification models on the same traing and testing dataset.
 
 The [data](https://github.com/vuthuyduong/fungiclassifiers/tree/master/data) folder consists of the three datasets: the yeast and mould datasets which were checked and validated by the specialists at the Westerdijk Fungal Biodiversity Institute, and the "Top most wanted fungi" (UNITE Community 2017) for the evaluation on different classification methods. The yeast dataset consisting of ~4000 ITS sequences that has been used in (Vu et al. 2018) and released as a subset in (Vu et al. 2016). This dataset was used for the evaluation of different classification methods in which most of the sequences in the test dataset has a label in the train dataset. The mould dataset has been released recently in (Vu et al. 2019). This dataset was to used to train the deep learning models for classifying the "Top most wanted fungi" data whose sequences are unrepresented in the train dataset.
 
