@@ -16,9 +16,13 @@ The training, classifying in the Classification, and the Evaluation of the BLAST
 ## Installing necessary packages using Conda
 
 conda install keras
+
 conda install scikit-learn
+
 conda install spicy
+
 conda install Theano
+
 conda install Biopython
 
 ## Contact person 
