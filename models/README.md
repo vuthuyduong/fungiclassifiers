@@ -42,3 +42,19 @@ If we wish to calculate the BLAST similarity score for the predictions with a pr
 
 DBN/classifyDBN.py traindataset_genus_dbn_classifier testdataset.fas proba_threshold
 
+
+## Training and classifying using the BLAST classification
+
+To predict an optimal threshold for classifying the sequences at the genus level, for example, use the following command:
+
+BLAST/trainBLAST.py traindataset.fas traindataset.classification 5 0.9 1 0.001 
+
+where [0.9,1] is the interval of the optimal threshold, and 0.001 is the step used for searching. This command is used only when we don't know which BLAST threshold is used for classifying the sequences at the current taxonomic level.
+
+To classify the sequences using the BLAST classification, used the following command:
+
+BLAST/classifyBLAST.py testdataset.fas traindataset.fas traindataset.classification 5 0.97
+
+where 0.97 is the optimal threshold that we use for classifying the sequences at the current level.
+
+## Training and classifying using the RDP model
