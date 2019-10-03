@@ -2,7 +2,7 @@
 
 To train the CNN model at the genus level, use the following command:
 
-*CNN/trainCNN.py traindataset.fas traindataset.classification 5 
+* * CNN/trainCNN.py traindataset.fas traindataset.classification 5 
 
 where 5 is the position of the genera in the classification traindataset.classification file. Here the k-mer size is set to 6 as default. 
 
