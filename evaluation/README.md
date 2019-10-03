@@ -12,26 +12,26 @@ Here 4 is the fold number. The training and testing ids will be saved in the res
 
 # Evaluating CNN 
 
-*evaluateCNN.py yeastITS_G.matrix results*/
+*evaluateCNN.py yeastITS_G.matrix results*
 
 The evaluation will be saved in the file yeastITS_G.cnn.report
 
 # Evaluating DBN 
 
-*evaluateDBN.py yeastITS_G.matrix results*/
+*evaluateDBN.py yeastITS_G.matrix results*
 
 The evaluation will be saved in the file yeastITS_G.dbn.report
 
-# Evaluating BLAST
+# Evaluating BLAST 
 
-*evaluateCNN.py yeastITS_G.matrix results*/
+*evaluateBLAST.py yeastITS.fas YeastITS.classification 5 results 0.9 1 0.001*
 
-The evaluation will be saved in the file yeastITS_G.cnn.report
+The evaluation will be saved in the file yeastITS.blast.report
 
 # Evaluating RDP 
 
-*evaludateCNN.py yeastITS_G.matrix results*/
+*evaludateRDP.py yeastITS.fas YeastITS.classification 5 results path_to_the_RDP_classifier_classifier.jar*
 
-The evaluation will be saved in the file yeastITS_G.cnn.report
+The evaluation will be saved in the file yeastITS.rdp.report
 
 
