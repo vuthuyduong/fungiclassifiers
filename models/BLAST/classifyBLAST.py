@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# FILE: classifyBLAST.py
+# FILE: trainingresults2report.py
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
