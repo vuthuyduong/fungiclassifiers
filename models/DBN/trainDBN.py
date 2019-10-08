@@ -9,8 +9,6 @@ np.random.seed(1337)  # for reproducibility
 from sklearn.datasets import load_digits
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics.classification import accuracy_score
-
-
 from dbn.tensorflow import SupervisedDBNClassification
 import json
 

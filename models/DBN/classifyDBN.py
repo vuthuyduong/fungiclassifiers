@@ -19,7 +19,7 @@ import random
 
 modelname=sys.argv[1] #folder containing the classifier name and config file
 testfastafilename=sys.argv[2]
-minprobaforBlast=-1 #search for best match of the sequences by BLast only when minprobabilityforBlast >=0
+minprobaforBlast=1.1 #search for best match of the sequences by BLast only when minprobabilityforBlast <=1.0
 if len(sys.argv)>3:
 	minprobaforBlast=float(sys.argv[3])
 mincoverage=300 #for ITS sequences, used only for comparing the sequences with BLAST
@@ -286,10 +286,10 @@ def ComputeBLASTScore(testrecord,predictedname,classeswithsequences,mincoverage)
 
 def SavePrediction(minprobaforBlast,mincoverage,classes,classeswithsequences,testseqIDs,testseqrecords,testlabels,pred_labels,probas,outputname):
 	output=open(outputname,"w")
-	if minprobaforBlast >= 0:
+	if minprobaforBlast <= 1.0:
 		output.write("Index\tSequenceID\tClassification\tPrediction\tProbability\tBLAST score\tBLAST sim\tBLAST coverage\tBLAST local sim\tBLAST local coverage\tNumber of sequences to be compared\tBest match ID\n")
 	else:
-		output.write("Index\tSequenceID\tClassification\tPrediction\tProbability\t\n")	
+		output.write("Index\tSequenceID\tClassification\tPrediction\tProbability\n")	
 	acc=0
 	i=0
 	for seqid in testseqIDs:
@@ -298,7 +298,7 @@ def SavePrediction(minprobaforBlast,mincoverage,classes,classeswithsequences,tes
 		if testlabels[i] >=0:
 			giventaxonname = classes[testlabels[i]]
 		predictedname = classes[pred_labels[i]]
-		if minprobaforBlast >= 0:
+		if minprobaforBlast <=1.0 and proba >= minprobaforBlast:
 			bestrefseqID,score,sim,coverage,localsim,localcoverage,numberofsequences=ComputeBLASTScore(testseqrecords[i],predictedname,classeswithsequences,mincoverage)
 			output.write(str(i) + "\t" + seqid + "\t" + giventaxonname + "\t"  + predictedname + "\t" + str(proba) + "\t" + str(score) + "\t" + str(sim) + "\t" + str(coverage) + "\t" + str(localsim) + "\t" + str(localcoverage) + "\t" + str(numberofsequences) + "\t" + bestrefseqID + "\n")	
 		else:
@@ -327,7 +327,7 @@ if __name__ == "__main__":
 	#load classes with sequences
 	classeswithsequences={}
 	testseqrecords=[]
-	if minprobaforBlast >=0:
+	if minprobaforBlast <=1.0:
 		#load classes
 		with open(jsonfilename) as json_file:
 			   classeswithsequences = json.load(json_file)
