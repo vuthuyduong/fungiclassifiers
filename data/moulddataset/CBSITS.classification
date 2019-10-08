@@ -4574,7 +4574,7 @@ MH854682	Ascomycota	Dothideomycetes	Capnodiales	Cladosporiaceae	Cladosporium	Cla
 MH854683	Mucoromycota	Mucoromycetes	Mucorales	Phycomycetaceae	Phycomyces	Phycomyces blakesleeanus
 MH854684	Ascomycota	Dothideomycetes	Pleosporales	Didymellaceae	Heterophoma	Heterophoma poolensis
 MH854685	Basidiomycota	Agaricomycetes	Russulales	Stereaceae	Stereum	Stereum spadiceum var. quercinum
-MH854686					Mucor	Mucor exponens
+MH854686	Mucoromycota	Mucoromycetes	Mucorales	Mucoraceae	Mucor	Mucor exponens
 MH854687	Ascomycota	Dothideomycetes	Pleosporales		Ascochyta	Ascochyta abelmoschi
 MH854688	Ascomycota	Dothideomycetes	Pleosporales	Leptosphaeriaceae	Coniothyrium	Coniothyrium glomerulatum
 MH854689	Basidiomycota	Agaricomycetes	Agaricales	Coprinaceae	Coprinus	Coprinus sterquilinus
@@ -4598,7 +4598,7 @@ MH854706	Ascomycota	Eurotiomycetes	Eurotiales	Aspergillaceae	Aspergillus	Aspergi
 MH854707	Ascomycota	Dothideomycetes	Dothideales	Dothioraceae	Aureobasidium	Aureobasidium melanogenum
 MH854708	Ascomycota	Sordariomycetes	Hypocreales	Cordycipitaceae	Beauveria	Beauveria brongniartii
 MH854709	Ascomycota	Sordariomycetes	Microascales	Ceratocystidaceae	Ceratocystis	Ceratocystis euricoi
-MH854710						Allantophomopsis
+MH854710	Ascomycota	Leotiomycetes	Phacidiales	Phacidiaceae	Allantophomopsis
 MH854711	Basidiomycota	Agaricomycetes	Atheliales	Atheliaceae	Athelia	Athelia rolfsii
 MH854712	Ascomycota	Sordariomycetes	Diaporthales	Valsaceae	Valsa	Valsa salicina
 MH854713	Ascomycota	Dothideomycetes	Pleosporales	Didymellaceae	Epicoccum	Epicoccum nigrum
@@ -4725,7 +4725,7 @@ MH854833	Mortierellomycota	Mortierellomycetes	Mortierellales	Mortierellaceae	Mor
 MH854834	Mortierellomycota	Mortierellomycetes	Mortierellales	Mortierellaceae	Mortierella	Mortierella hyalina
 MH854835	Ascomycota	Sordariomycetes	Hypocreales	Nectriaceae	Lanatonectria	Lanatonectria flavolanata
 MH854836	Ascomycota	Sordariomycetes	Hypocreales	Cordycipitaceae	Cordyceps	Cordyceps javanica
-MH854837						Pestalotiopsis
+MH854837	Ascomycota	Sordariomycetes	Amphisphaeriales	Sporocadaceae	Pestalotiopsis
 MH854838	Ascomycota	Sordariomycetes	Amphisphaeriales	Sporocadaceae	Pestalotiopsis	Pestalotiopsis scoparia
 MH854839	Ascomycota	Dothideomycetes	Pleosporales		Stagonosporopsis	Stagonosporopsis astragali
 MH854840	Ascomycota	Dothideomycetes	Pleosporales	Didymellaceae	Didymella	Didymella macrostoma
@@ -6048,7 +6048,7 @@ MH856159	Basidiomycota	Agaricomycetes	Agaricales	Mycenaceae	Mycena	Mycena speire
 MH856160	Ascomycota	Leotiomycetes	Helotiales	Dermateaceae	Pezicula	Pezicula heterochroma
 MH856161	Ascomycota	Leotiomycetes	Helotiales	Dermateaceae	Scleropezicula	Scleropezicula alnicola
 MH856162	Ascomycota	Leotiomycetes	Helotiales	Dermateaceae	Pezicula	Pezicula aurantiaca
-MH856163						Pezicula
+MH856163	Ascomycota	Leotiomycetes	Helotiales	Dermateaceae	Pezicula
 MH856164	Basidiomycota	Agaricomycetes	Agaricales	Strophariaceae	Agrocybe	Agrocybe cylindracea
 MH856165	Ascomycota				Tumularia	Tumularia aquatica
 MH856166	Basidiomycota	Agaricomycetes	Agaricales	Psathyrellaceae	Psathyrella	Psathyrella gracilis
@@ -6334,7 +6334,7 @@ MH856445	Basidiomycota	Agaricomycetes	Polyporales	Fomitopsidaceae	Neoantrodia	Ne
 MH856446	Ascomycota	Eurotiomycetes	Onygenales	Arthrodermataceae	Trichophyton	Trichophyton tonsurans
 MH856447	Basidiomycota	Agaricomycetes	Russulales	Lachnocladiaceae	Scytinostroma	Scytinostroma portentosum
 MH856448	Ascomycota	Ascomycetes			Lecanicillium	Lecanicillium psalliotae
-MH856449					Mucor	Mucor exponens
+MH856449	Mucoromycota	Mucoromycetes	Mucorales	Mucoraceae	Mucor	Mucor exponens
 MH856450	Mucoromycota	Mucoromycetes	Mucorales	Lichtheimiaceae	Lichtheimia	Lichtheimia ramosa
 MH856451	Ascomycota	Dothideomycetes	Pleosporales	Pleosporaceae	Alternaria	Alternaria alternata
 MH856452	Ascomycota	Dothideomycetes	Pleosporales		Ascochyta	Ascochyta juglandis
@@ -6677,7 +6677,7 @@ MH856789	Ascomycota	Sordariomycetes	Sordariales	Chaetomiaceae	Chaetomium	Chaetom
 MH856790	Ascomycota	Sordariomycetes	Sordariales	Chaetomiaceae	Chaetomium	Chaetomium globosum
 MH856791	Mucoromycota	Mucoromycetes	Mucorales	Choanephoraceae	Choanephora	Choanephora cucurbitarum
 MH856792	Mucoromycota	Mucoromycetes	Mucorales	Choanephoraceae	Choanephora	Choanephora infundibulifera
-MH856793					Mucor	Mucor durus
+MH856793	Mucoromycota	Mucoromycetes	Mucorales	Mucoraceae	Mucor	Mucor durus
 MH856794	Ascomycota	Sordariomycetes	Sordariales	Chaetomiaceae	Myceliophthora	Myceliophthora lutea
 MH856795	Basidiomycota	Agaricomycetes	Agaricales	Tricholomataceae	Clitocybe	Clitocybe ditopa
 MH856796	Basidiomycota	Agaricomycetes	Agaricales	Omphalotaceae	Omphalotus	Omphalotus olearius
@@ -6765,7 +6765,7 @@ MH856877	Ascomycota	Sordariomycetes	Amphisphaeriales	Pestalotiopsidaceae	Seiridi
 MH856878	Ascomycota				Monosporium	Monosporium venezuelense
 MH856879	Basidiomycota	Agaricomycetes	Agaricales	Agaricaceae	Montagnea	Montagnea candollei
 MH856880	Ascomycota	Dothideomycetes	Pleosporales	Didymellaceae	Didymella	Didymella pinodes
-MH856881						Pseudopericoniella
+MH856881	Ascomycota	Dothideomycetes	Capnodiales	Mycosphaerellaceae	Pseudopericoniella
 MH856882	Ascomycota	Sordariomycetes	Hypocreales	Stachybotryaceae	Paramyrothecium	Paramyrothecium foeniculicola
 MH856883	Ascomycota				Myxosporella	Myxosporella schini
 MH856884	Ascomycota	Sordariomycetes	Sordariales	Cephalothecaceae	Phialemonium	Phialemonium inflatum
@@ -7248,8 +7248,8 @@ MH857360	Basidiomycota	Agaricomycetes	Russulales	Peniophoraceae	Peniophora	Penio
 MH857361	Basidiomycota	Agaricomycetes	Russulales	Peniophoraceae	Peniophora	Peniophora versiformis
 MH857362	Basidiomycota	Agaricomycetes	Russulales	Peniophoraceae	Peniophora	Peniophora versiformis
 MH857363	Ascomycota	Sordariomycetes	Xylariales	Amphisphaeriaceae	Pestalotia	Pestalotia bicolor
-MH857364						Pestalotiopsis
-MH857365						Pestalotiopsis
+MH857364	Ascomycota	Sordariomycetes	Amphisphaeriales	Sporocadaceae	Pestalotiopsis
+MH857365	Ascomycota	Sordariomycetes	Amphisphaeriales	Sporocadaceae	Pestalotiopsis
 MH857366	Ascomycota	Sordariomycetes	Amphisphaeriales	Pestalotiopsidaceae	Neopestalotiopsis	Neopestalotiopsis aotearoa
 MH857367	Ascomycota	Pezizomycetes	Pezizales	Pezizaceae	Peziza	Peziza ostracoderma
 MH857368	Ascomycota	Ascomycetes		Pseudeurotiaceae	Pseudeurotium	Pseudeurotium ovale
@@ -7708,9 +7708,9 @@ MH857820	Ascomycota	Dothideomycetes	Pleosporales	Pleosporaceae	Exserohilum	Exser
 MH857821	Ascomycota	Eurotiomycetes	Onygenales	Arthrodermataceae	Trichophyton	Trichophyton rubrum
 MH857822	Ascomycota				Tricellula	Tricellula aurantiaca
 MH857823	Ascomycota	Sordariomycetes	Xylariales	Xylariaceae	Xylaria	Xylaria sicula f. major
-MH857824					Mucor	Mucor moelleri f. californiensis
+MH857824	Mucoromycota	Mucoromycetes	Mucorales	Mucoraceae	Mucor	Mucor moelleri f. californiensis
 MH857825	Mucoromycota	Mucoromycetes	Mucorales	Mucoraceae	Zygorhynchus	Zygorhynchus exponens var. exponens
-MH857826					Mucor	Mucor exponens
+MH857826	Mucoromycota	Mucoromycetes	Mucorales	Mucoraceae	Mucor	Mucor exponens
 MH857827	Mucoromycota	Mucoromycetes	Mucorales	Mucoraceae	Mucor	Mucor moelleri
 MH857828	Mucoromycota	Mucoromycetes	Mucorales	Cunninghamellaceae	Absidia	Absidia cuneospora
 MH857829	Ascomycota	Dothideomycetes	Capnodiales	Mycosphaerellaceae	Zasmidium	Zasmidium cerophilum
@@ -7854,7 +7854,7 @@ MH857966	Ascomycota	Eurotiomycetes	Eurotiales	Trichocomaceae	Talaromyces	Talarom
 MH857967	Ascomycota	Eurotiomycetes	Eurotiales	Trichocomaceae	Eupenicillium	Eupenicillium pinetorum
 MH857968	Ascomycota	Eurotiomycetes	Eurotiales	Trichocomaceae	Talaromyces	Talaromyces stipitatus
 MH857969	Ascomycota	Eurotiomycetes	Eurotiales	Aspergillaceae	Penicillium	Penicillium turbatum
-MH857970						Pezicula
+MH857970	Ascomycota	Leotiomycetes	Helotiales	Dermateaceae	Pezicula
 MH857971	Ascomycota	Leotiomycetes	Helotiales	Hyaloscyphaceae	Cistella	Cistella acuum
 MH857972	Ascomycota	Leotiomycetes	Helotiales		Cadophora	Cadophora luteo-olivacea
 MH857973	Ascomycota	Dothideomycetes	Pleosporales	Didymellaceae	Epicoccum	Epicoccum pimprinum
@@ -8680,7 +8680,7 @@ MH858792	Ascomycota	Eurotiomycetes	Chaetothyriales	Herpotrichiellaceae	Fonsecaea
 MH858793	Ascomycota	Eurotiomycetes	Chaetothyriales	Herpotrichiellaceae	Fonsecaea	Fonsecaea pedrosoi
 MH858794	Ascomycota	Dothideomycetes	Capnodiales	Mycosphaerellaceae	Pseudocercospora	Pseudocercospora rhapisicola
 MH858795	Ascomycota	Sordariomycetes	Microascales	Microascaceae	Cephalotrichum	Cephalotrichum hinnuleum
-MH858796					Mucor	Mucor ctenidius
+MH858796	Mucoromycota	Mucoromycetes	Mucorales	Mucoraceae	Mucor	Mucor ctenidius
 MH858797	Ascomycota	Eurotiomycetes	Onygenales	Gymnoascaceae	Gymnascella	Gymnascella dankaliensis
 MH858798	Ascomycota	Dothideomycetes	Pleosporales	Periconiaceae	Periconia	Periconia igniaria
 MH858799	Ascomycota	Sordariomycetes	Amphisphaeriales	Sporocadaceae	Hyalotiella	Hyalotiella transvalensis
@@ -8750,7 +8750,7 @@ MH858862	Ascomycota	Leotiomycetes	Helotiales		Spirosphaera	Spirosphaera minuta
 MH858863	Ascomycota	Eurotiomycetes	Eurotiales	Aspergillaceae	Penicillium	Penicillium anatolicum
 MH858864	Ascomycota	Eurotiomycetes	Eurotiales	Aspergillaceae	Penicillium	Penicillium anatolicum
 MH858865	Mucoromycota	Mucoromycetes	Mucorales	Cunninghamellaceae	Cunninghamella	Cunninghamella binariae
-MH858866					Mucor	Mucor durus
+MH858866	Mucoromycota	Mucoromycetes	Mucorales	Mucoraceae	Mucor	Mucor durus
 MH858867	Ascomycota	Eurotiomycetes	Eurotiales	Trichocomaceae	Eupenicillium	Eupenicillium shearii
 MH858868	Ascomycota	Eurotiomycetes	Eurotiales	Trichocomaceae	Eupenicillium	Eupenicillium cinnamopurpureum
 MH858869	Ascomycota	Eurotiomycetes	Eurotiales	Trichocomaceae	Eupenicillium	Eupenicillium cinnamopurpureum
@@ -9036,7 +9036,7 @@ MH859148	Ascomycota	Sordariomycetes	Sordariales	Sordariaceae	Gelasinospora	Gelas
 MH859149	Ascomycota	Eurotiomycetes	Onygenales	Arthrodermataceae	Microsporum	Microsporum audouinii
 MH859150	Ascomycota	Eurotiomycetes	Eurotiales	Trichocomaceae	Thysanophora	Thysanophora canadensis
 MH859151	Ascomycota	Sordariomycetes			Custingophora	Custingophora olivacea
-MH859152					Mucor	Mucor fusiformis
+MH859152	Mucoromycota	Mucoromycetes	Mucorales	Mucoraceae	Mucor	Mucor fusiformis
 MH859153	Ascomycota	Sordariomycetes	Sordariales	Chaetomiaceae	Humicola	Humicola homopilata
 MH859154	Ascomycota	Eurotiomycetes	Eurotiales	Trichocomaceae	Hamigera	Hamigera avellanea
 MH859155	Ascomycota	Eurotiomycetes	Eurotiales	Aspergillaceae	Aspergillus	Aspergillus baarnensis
@@ -10119,7 +10119,7 @@ MH860234	Ascomycota	Dothideomycetes	Pleosporales	Pleosporaceae	Alternaria	Altern
 MH860235	Ascomycota	Dothideomycetes	Pleosporales	Didymosphaeriaceae	Paraphaeosphaeria	Paraphaeosphaeria sardoa
 MH860236	Ascomycota	Dothideomycetes	Pleosporales	Didymellaceae	Didymella	Didymella musae
 MH860237	Ascomycota				Coleophoma	Coleophoma cylindrospora
-MH860238						Sporocadus
+MH860238	Ascomycota	Sordariomycetes	Amphisphaeriales	Sporocadaceae	Sporocadus
 MH860239	Ascomycota	Dothideomycetes	Pleosporales		Anguillospora	Anguillospora curvula
 MH860240	Ascomycota	Ascomycetes			Variocladium	Variocladium giganteum
 MH860241	Ascomycota	Leotiomycetes	Helotiales	Helotiaceae	Tricladium	Tricladium attenuatum
@@ -12267,7 +12267,7 @@ MH862383	Ascomycota	Dothideomycetes	Capnodiales	Cladosporiaceae	Cladosporium	Cla
 MH862384	Ascomycota	Dothideomycetes	Pleosporales	Phaeosphaeriaceae	Phaeosphaeria	Phaeosphaeria microscopica
 MH862385	Ascomycota	Dothideomycetes	Pleosporales	Phaeosphaeriaceae	Phaeosphaeria	Phaeosphaeria eustoma
 MH862386	Ascomycota	Sordariomycetes	Hypocreales		Acremonium	Acremonium psychrophilum
-MH862387					Mucor	Mucor irregularis
+MH862387	Mucoromycota	Mucoromycetes	Mucorales	Mucoraceae	Mucor	Mucor irregularis
 MH862388	Ascomycota	Dothideomycetes	Pleosporales	Didymellaceae	Nothophoma	Nothophoma arachidis-hypogaeae
 MH862389	Ascomycota	Sordariomycetes	Ophiostomatales	Ophiostomataceae	Leptographium	Leptographium neomexicanum
 MH862390	Ascomycota	Sordariomycetes	Ophiostomatales	Ophiostomataceae	Leptographium	Leptographium albopini
@@ -13997,7 +13997,7 @@ MH864115	Ascomycota	Sordariomycetes	Diaporthales	Gnomoniaceae	Cryptosporella	Cry
 MH864116	Ascomycota	Dothideomycetes	Capnodiales	Phaeothecaceae	Phaeotheca	Phaeotheca fissurella
 MH864117	Ascomycota	Sordariomycetes	Glomerellales	Plectosphaerellaceae	Verticillium	Verticillium fungicola
 MH864118	Ascomycota	Sordariomycetes	Hypocreales	Nectriaceae	Nectria	Nectria pseudopeziza
-MH864119	Ascomycota	Sordariomycetes	Hypocreales	Nectriaceae	Nectriella	Nectriella ruscicola
+MH864119	Ascomycota	Sordariomycetes	Hypocreales	Bionectriaceae	Nectriella	Nectriella ruscicola
 MH864120	Ascomycota	Leotiomycetes	Helotiales	Dermateaceae	Cryptosporiopsis	Cryptosporiopsis kienholzii
 MH864121	Ascomycota	Leotiomycetes	Helotiales		Xenopolyscytalum	Xenopolyscytalum pinea
 MH864122	Ascomycota	Eurotiomycetes	Chaetothyriales	Strelitzianaceae	Strelitziana	Strelitziana albiziae
