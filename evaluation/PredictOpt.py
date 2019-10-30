@@ -48,8 +48,9 @@ def GetClasses(fastafilename,classificationfilename,pos):
 		classname = words[pos].rstrip()
 		if classname in classnames:
 			i=classnames.index(classname)
-			refclass = classes[i] 
-			refclass.append(seqid)
+			#refclass = classes[i] 
+			#refclass.append(seqid)
+			classes[i].append(seqid)
 		else:
 			classnames.append(classname)
 			refclass=[]
