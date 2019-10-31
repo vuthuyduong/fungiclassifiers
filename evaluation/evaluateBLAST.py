@@ -59,7 +59,7 @@ def GenerateFastafile(prefixfilename,seqids,seqrecords):
 		i=i+1	
 	seqfile.close()
 
-def PredictOpt(traindataset,classificationfilename,classificationlevel,t1,t2):
+def PredictOpt(traindataset,classificationfilename,classificationlevel):
 	if t1>=t2:
 		return t1
 	command=path + "PredictOpt.py " + traindataset + " " + classificationfilename + " " + str(classificationlevel) + " " + str(t1) + " " + str(t2) + " " + str(step)
@@ -310,7 +310,7 @@ for filename in filenames:
 
 #generate report
 report=open(reportfilename,"w")
-report.write("Test dataset\tNumber of sequences in the test dataset\tTrain dataset\tNumber of sequences in the train dataset\tAccuracy of BLAST\tNumber of unidentified sequences by BLAST\tTraining time\tClassifying time\n")
+report.write("Test dataset\tNumber of sequences in the test dataset\tTrain dataset\tNumber of sequences in the train dataset\tOptimal threshold\tAccuracy of BLAST\tNumber of unidentified sequences by BLAST\tTraining time\tClassifying time\n")
 for dataset in datasets:
 	print(dataset)
 	testdataset=datapath+"/test_"+dataset
@@ -330,16 +330,16 @@ for dataset in datasets:
 	testdataset=datapath+"/test_"+dataset+".fasta"
 	traindataset=datapath+"/train_"+dataset+".fasta"
 	beginning=datetime.now()
-	optthreshold=PredictOpt(traindataset,classificationfilename,classificationlevel,t1,t2)
+	optthreshold=PredictOpt(traindataset,classificationfilename,classificationlevel)
 	end=datetime.now()
-	t1=(end-beginning).total_seconds()
+	time1=(end-beginning).total_seconds()
 	#search for a best match of a test sequence in a train dataset
 	beginning=datetime.now()
 	bestmatchlist,bestscorelist=SearchForBestMatch(testdataset,traindataset)
 	#Get the best label for a test sequence based on its best match
 	best_labels=GetBestMatchLabels(alllabels,seqnames,bestmatchlist,bestscorelist,optthreshold)
 	end=datetime.now()
-	t2=(end-beginning).total_seconds()
+	time2=(end-beginning).total_seconds()
 
 	#Caculate the accuracy based on searching for best match
 	acc_of_searching,unidentifiedlist_by_searching=ComputeAccuracy(train_labels,testids,test_labels,best_labels)
@@ -349,7 +349,7 @@ for dataset in datasets:
 	SavePrediction(classification,seqnames,alllabels,testids,best_labels,searching_output)
 
 	#Print the result
-	report.write(testdataset + "\t" + str(len(testids)) + "\t" + traindataset + "\t" + str(len(trainids)) +"\t" + str(optthreshold)+ "\t"+ str(acc_of_searching)+ "\t" + str(len(unidentifiedlist_by_searching)) + "\t" + str(t1) + "\t" + str(t2) + "\n")
+	report.write(testdataset + "\t" + str(len(testids)) + "\t" + traindataset + "\t" + str(len(trainids)) +"\t" + str(optthreshold)+ "\t"+ str(acc_of_searching)+ "\t" + str(len(unidentifiedlist_by_searching)) + "\t" + str(time1) + "\t" + str(time2) + "\n")
 	#Save prediction by searching
-	print(testdataset + "\t" + str(len(testids)) +  "\t" + traindataset + "\t" + str(len(trainids)) + "\t" + str(optthreshold)+ "\t"+ str(acc_of_searching)+ "\t" + str(len(unidentifiedlist_by_searching)) + "\t" + str(t1) + "\t" + str(t2) + "\n")
+	print(testdataset + "\t" + str(len(testids)) +  "\t" + traindataset + "\t" + str(len(trainids)) + "\t" + str(optthreshold)+ "\t"+ str(acc_of_searching)+ "\t" + str(len(unidentifiedlist_by_searching)) + "\t" + str(time1) + "\t" + str(time2) + "\n")
 report.close()
