@@ -39,8 +39,12 @@ def load_data(fastafilename,classificationfilename,classificationlevel):
 				level=texts[classificationlevel].rstrip()
 			continue 		
 		seqid=texts[0].replace(">","").rstrip()
-		allseqids.append(seqid)
-		classification.append(texts[classificationlevel].rstrip())
+		classname=""
+		if classificationlevel < len(texts):
+			classname=texts[classificationlevel].rstrip()
+		if classname !="":
+			allseqids.append(seqid)
+			classification.append(classname)
 	records.close()
 	classificationset=set(classification)
 	classes=list(classificationset)

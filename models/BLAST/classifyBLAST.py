@@ -3,10 +3,14 @@
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
-import math
 import numpy as np
 import os
 from Bio import SeqIO
+import json
+import multiprocessing
+import random
+
+nproc=multiprocessing.cpu_count()
 #from keras.utils import np_utils
 
 
@@ -14,33 +18,45 @@ testdataset=sys.argv[1]
 traindataset=sys.argv[2]
 classificationfilename = sys.argv[3]
 classificationposition =int(sys.argv[4])
-optthreshold=0 #the optimal threshold for classification 
-if "," in sys.argv[5]:
-	ts = sys.argv[5].split(",")
-	t=ts[len(ts)-1]
-	pre_t=sys.argv[5][:len(t)]
-	optthreshold=float(t)
-else:
-	optthreshold = float(sys.argv[5])
-
+mincoverage=300
+if len(sys.argv) >5:
+	mincoverage = float(sys.argv[5])
+optthreshold=-1 #the optimal threshold for classification, if optthreshold=-1, the threshold of the group will be taken 
+if len(sys.argv) >6:
+	optthreshold = float(sys.argv[6])	
+jsonvariationfilename = "" #json format, optional
+if len(sys.argv) >7:
+	jsonvariationfilename = sys.argv[7]
 def GetBase(filename):
 	return filename[:-(len(filename)-filename.rindex("."))]
 
-def LoadClassification(seqIDs,classificationfilename,pos):
+def LoadClassification(seqIDs,seqrecords,classificationfilename,pos):
 	classification=[""]*len(seqIDs)
+	classes=[]
+	classnames=[]
+	level=str(pos)
 	if classificationfilename == "":
 		return classification
 	records= list(open(classificationfilename, "r"))
 	for line in records:
-		if line.startswith("#"):
-			continue 
 		elements=line.split("\t")
+		if line.startswith("#"):
+			level=elements[pos]
+			continue 
 		seqid = elements[0].replace(">","").rstrip()
 		if seqid in seqIDs:
 			index=seqIDs.index(seqid)
 			classname=elements[pos].rstrip()
 			classification[index]=classname
-	return classification
+			if classname in classnames:
+				classid=classnames.index(classname)
+				classes[classid].append(seqrecords[index])
+			else:
+				classnames.append(classname)
+				seqs=[]
+				seqs.append(seqrecords[index])
+				classes.append(seqs)
+	return classification,classes,classnames,level
 
 def GetSeqIndex(seqname,seqrecords):
 	i=0
@@ -50,6 +66,103 @@ def GetSeqIndex(seqname,seqrecords):
 		i = i + 1
 	return -1
 
+def ComputeBLASTscoreMatrix(fastafilename,records,mincoverage):
+	scorematrix = [[0 for x in range(len(records))] for y in range(len(records))] 
+	seqids=[]
+	for rec in records:
+		seqids.append(rec.id)
+	#blast
+	makedbcommand = "makeblastdb -in " + fastafilename + " -dbtype \'nucl\' " +  " -out db"
+	os.system(makedbcommand)
+	blastcommand = "blastn -query " + fastafilename + " -db  db -task blastn-short -outfmt 6 -out out.txt -num_threads " + str(nproc)
+	os.system(blastcommand)
+	
+	#read blast output
+	blastoutputfile = open("out.txt")
+	refid = ""
+	score=0
+	queryid=""
+	for line in blastoutputfile:
+		if line.rstrip()=="":
+			continue
+		words = line.split("\t")
+		queryid = words[0].rstrip()
+		refid = words[1].rstrip()
+		i = seqids.index(queryid)
+		j = seqids.index(refid)
+		pos1 = int(words[6])
+		pos2 = int(words[7])
+		iden = float(words[2]) 
+		sim=float(iden)/100
+		coverage=abs(pos2-pos1)
+		score=sim
+		if coverage < mincoverage:
+			score=float(score * coverage)/mincoverage
+		if scorematrix[i][j] < score:
+			scorematrix[i][j]=score
+			scorematrix[j][i]=score
+	os.system("rm out.txt")
+	return scorematrix
+
+def ComputeVariation(reffilename,mincoverage):
+	#load sequeces from the fasta files
+	records = list(SeqIO.parse(reffilename, "fasta"))
+	scorematrix=ComputeBLASTscoreMatrix(reffilename,records,mincoverage)
+	scorelist=[]
+	for i in range(0,len(scorematrix)-2):
+		for j in range(i+1,len(scorematrix)-1):
+			if i!=j:
+				scorelist.append(scorematrix[i][j])
+	threshold=1
+	minthreshold=1		
+	if len(scorelist) >0:
+		x=np.array(scorelist)
+		threshold=np.median(x)
+		minthreshold=np.min(x)
+	return threshold,minthreshold
+
+def EvaluateVariation(taxonname,sequences,mincoverage):
+	thresholds=[]
+	minthresholds=[] 
+	for i in range(0,10):
+		n=int(len(sequences)/10)
+		selectedindexes=random.sample(range(0, len(sequences)), k=n)
+		selectedsequences=[]
+		for index in selectedindexes:
+			selectedsequences.append(sequences[index])
+		fastafilename=taxonname.replace(" ","_") + ".fasta"
+		SeqIO.write(selectedsequences,fastafilename,"fasta")
+		threshold,minthreshold=ComputeVariation(fastafilename,mincoverage)
+		os.system("rm " + fastafilename)
+		thresholds.append(threshold)
+		minthresholds.append(minthreshold)
+	threshold = np.median(np.array(thresholds))
+	minthreshold =  np.median(np.array(minthresholds))
+	return threshold,minthreshold
+
+def ComputeVariations(variationfilename,classes,classnames,mincoverage):
+	#create json dict
+	variations={}
+	i=0
+	for taxonname in classnames:
+		sequences=classes[i]
+		if len(sequences) >0:
+			threshold=0
+			minthreshold=0
+			if len(sequences) < 100:				
+				fastafilename=taxonname.replace(" ","_") + ".fasta"
+				SeqIO.write(sequences,fastafilename,"fasta")
+				threshold,minthreshold=ComputeVariation(fastafilename,mincoverage)
+				os.system("rm " + fastafilename)
+			else:
+				threshold,minthreshold=EvaluateVariation(taxonname,sequences,mincoverage)
+			currentvariation={'Threshold': threshold, 'MinThreshold': minthreshold,'NumberOfSequences': len(sequences)}
+			variations[taxonname]=currentvariation
+		i=i+1	
+	#write to file
+	with open(variationfilename,"w") as json_file:
+		json.dump(variations,json_file,encoding='latin1')
+		
 def IndexSequences(filename):
 	indexedfilename = GetBase(filename) + ".indexed.fasta"
 	fastafile = open(filename)
@@ -65,139 +178,96 @@ def IndexSequences(filename):
 	indexedfile.close()
 	return indexedfilename
 
-def SearchForBestMatch(testdataset,traindataset):
-	#index the query sequences to be faster
-	indexedtestdataset= IndexSequences(testdataset)
+def ComputeBestBLASTscore(query,reference,mincoverage):
+	indexed_query= IndexSequences(query)
+
 	#load sequeces from the fasta files
-	queryrecords = list(SeqIO.parse(indexedtestdataset, "fasta"))
+	queryrecords = list(SeqIO.parse(indexed_query, "fasta"))
+	#refrecords = list(SeqIO.parse(reference, "fasta"))
+
 	bestscorelist =[0] * len(queryrecords)
-	bestrefnamelist = [""] * len(queryrecords)
+	bestsimlist =[0] * len(queryrecords)
+	bestcoveragelist =[0] * len(queryrecords)
+	bestrefidlist = [""] * len(queryrecords)
 
 	#blast
-	makedbcommand = "makeblastdb -in " + traindataset + " -dbtype \'nucl\' " +  " -out db"
+	makedbcommand = "makeblastdb -in " + reference + " -dbtype \'nucl\' " +  " -out db"
 	os.system(makedbcommand)
-	blastcommand = "blastn -query " + indexedtestdataset + " -db  db -outfmt 6 -out out.txt"
+	blastcommand = "blastn -query " + indexed_query + " -db  db -task blastn-short -outfmt 6 -out out.txt -num_threads " + str(nproc)
+	#blastcommand = "blastn -query " + indexed_query + " -subject " + reference + " -outfmt 6 -out out.txt"
 	os.system(blastcommand)
+	
 	#read blast output
 	blastoutputfile = open("out.txt")
-	refname = ""
-	queryname=""
-	minposition = 0
-	maxposition = 0
-	refminposition = 0
-	refmaxposition = 0
-	identity =0
-	seqlen=0
-	refseqlen=0
-	positions  = []
-	identities =[]
+	refid = ""
+	score=0
+	queryid=""
 	for line in blastoutputfile:
 		words = line.split("\t")
-		currentqueryname = words[0]
-		currentrefname = words[1]
-		if (refname != currentrefname) or (queryname !=currentqueryname):
-			if (refname !="") and (queryname != ""):
-				#compute the similarity of the previous seqquence				
-				#i = GetSeqIndex(queryname, queryrecords)
-				i = int(queryname.split("|")[0])
-				#coverage = max(abs(maxposition - minposition) + 1,abs(refmaxposition -refminposition) + 1) + min(minposition,refminposition)-1 + min(abs(seqlen-maxposition),abs(reflen-refmaxposition))
-				coverage = max(abs(maxposition - minposition) + 1,abs(refmaxposition -refminposition) + 1) + min(minposition,refminposition)-1 
-				#compute identity
-				identity =0 
-				for pos in range(minposition,maxposition + 1):
-					if pos in positions:
-						indexofpos = positions.index(pos)
-						identitiesatpos=identities[indexofpos]
-						identity = float(identity + max(identitiesatpos)/100)
-				sim=0
-				if coverage > 0:
-					sim  = float(identity / coverage)
-				score = sim
-				if  coverage < 150:
-					score = float(score * coverage /  150)
-				if bestscorelist[i] < score:
-					bestscorelist[i]= score
-					bestrefnamelist[i]=refname
-			refname = currentrefname
-			queryname=currentqueryname
-			minposition = 0
-			maxposition =0
-			refminposition = 0
-			refmaxposition =0 
-			identity = 0
-			positions = []
-			identities =[]
-		refpos1 =  int(words[8])
-		refpos2 = int(words[9])
+		queryid=words[0]
 		pos1 = int(words[6])
 		pos2 = int(words[7])
 		iden = float(words[2]) 
-		for pos in range(pos1,pos2 + 1):
-			if pos in positions:
-				indexofpos = positions.index(pos)
-				identities[indexofpos].append(iden)
-			else:
-				positions.append(pos)
-				identitiesatpos =[]
-				identitiesatpos.append(iden)
-				identities.append(identitiesatpos)
-		if minposition > 0:
-			minposition = min(minposition, min(pos1,pos2))
-		else:
-			minposition = min(pos1,pos2)
-		maxposition = max(maxposition, max(pos1,pos2))
-		if refminposition > 0:
-			refminposition = min(refminposition, min(refpos1,refpos2))
-		else:
-			refminposition = min(refpos1,refpos2)
-		refmaxposition = max(refmaxposition, max(refpos1,refpos2))
-	#i = GetSeqIndex(queryname, queryrecords)
-	i = int(queryname.split("|")[0])
-	#coverage = max(maxposition - minposition + 1,refmaxposition -refminposition + 1) + min(minposition,refminposition)-1 + min(abs(seqlen-maxposition),abs(reflen-refmaxposition))
-	coverage = max(maxposition - minposition + 1,refmaxposition -refminposition + 1) + min(minposition,refminposition)-1 
-	#compute identity
-	identity =0 
-	for pos in range(minposition,maxposition + 1):
-		if pos in positions:
-			indexofpos = positions.index(pos)
-			identitiesatpos=identities[indexofpos]
-			identity = float(identity + max(identitiesatpos))/float(100)
-	if coverage > 0:
-		sim  = float(identity /coverage)
-		score = sim
-		if  coverage < 150:
-			score = float(score * coverage / 150)
-		if bestscorelist[i] < score:
+		sim=float(iden)/100
+		coverage=abs(pos2-pos1)
+		refid=words[1]
+		score=sim
+		if coverage < mincoverage:
+				score=float(score * coverage)/mincoverage
+		i = int(queryid.split("|")[0])		
+		if score > bestscorelist[i]:
 			bestscorelist[i]= score
-			bestrefnamelist[i]=refname
-	os.system("rm " + indexedtestdataset)
+			bestrefidlist[i]=refid
+			bestsimlist[i]=sim
+			bestcoveragelist[i]=coverage
+	os.system("rm " + indexed_query)		
 	os.system("rm out.txt")
-	return bestrefnamelist,bestscorelist
+	return bestrefidlist,bestscorelist,bestsimlist,bestcoveragelist
 
-def GetBestMatchLabels(trainclassification,trainseqIDs,bestmatchlist,bestscorelist,opthreshold):
+def GetBestMatchLabels(trainclassification,trainseqIDs,bestmatchlist,bestscorelist,opthreshold,variation):
 	bestlabels=[]
 	i=0
+	count=0
 	for seqid in bestmatchlist:
 		if  seqid in trainseqIDs:
 			index=trainseqIDs.index(seqid)
-			if bestscorelist[i] >= optthreshold:
+			classname=unicode(trainclassification[index],'latin1')
+			opt=0
+			if optthreshold >= 0:
+				opt=optthreshold
+			else:
+				opt=variation[classname]['Threshold']
+#			if threshold < optthreshold:
+#				opt=max(optthreshold -0.05,threshold)
+			if bestscorelist[i] >= opt:
 				bestlabels.append(trainclassification[index])
+				count=count+1
 			else:
 			#no identification
 				bestlabels.append("")
 		else: #no identification
 			bestlabels.append("")
 		i=i+1
-	return bestlabels
+	return bestlabels,count
 
-def SavePrediction(trainclassification,testclassification,testseqIDs,pred_labels,bestscorelist,outputname):
+def SavePrediction(trainclassification,testclassification,testseqIDs,pred_labels,bestscorelist,bestsimlist,bestcoveragelist,bestrefidlist,opt,variation,outputname):
 	output=open(outputname,"w")
-	output.write("Sequence index\tSequenceID\tClassification\tPrediction\tScore\n")
+	output.write("Sequence index\tSequenceID\tClassification\tPrediction\tSimilarity core\tBLAST similarity score\tBLAST coverage\tBest match ID\tOptimal threshold\tThreshold\tMin threshold\tNumber of reference sequences\n")
 	for i in range(0,len(testseqIDs)):
 		testlabel=""
 		if len(testclassification) > i:
-			testlabel=testclassification[i]			
-		output.write(str(i) + "\t" + str(testseqIDs[i]) + "\t" + testlabel + "\t"  + pred_labels[i] + "\t" + str(bestscorelist[i]) + "\n")
+			testlabel=testclassification[i]	
+			predlabel=pred_labels[i]
+			minthreshold=0
+			threshold=0
+			numberofsequences=0
+			if predlabel!="":
+				predlabel=unicode(predlabel,'latin1')
+				if variation !={}:
+					threshold=variation[predlabel]['Threshold']
+					minthreshold=variation[predlabel]['MinThreshold']
+					numberofsequences=variation[predlabel]['NumberOfSequences']
+		output.write(str(i) + "\t" + str(testseqIDs[i]) + "\t" + testlabel + "\t"  + pred_labels[i] + "\t" + str(bestscorelist[i]) + "\t" + str(bestsimlist[i]) + "\t" + str(bestcoveragelist[i]) +  "\t" + bestrefidlist[i] + "\t" + str(opt) + "\t" + str(threshold) + "\t" + str(minthreshold) + "\t" + str(numberofsequences) + "\n")
 	output.close()
 
 ##############################################################################
@@ -205,6 +275,7 @@ def SavePrediction(trainclassification,testclassification,testseqIDs,pred_labels
 ##############################################################################
 path=sys.argv[0]
 path=path[:-(len(path)-path.rindex("/")-1)]
+
 #load train seq records
 trainseqrecords = list(SeqIO.parse(traindataset, "fasta"))
 trainseqIDs=[]
@@ -218,17 +289,29 @@ for seq in testseqrecords:
 
 
 #Load classes, classification:
-trainclassification= LoadClassification(trainseqIDs, classificationfilename, classificationposition)
-testclassification= LoadClassification(testseqIDs,classificationfilename, classificationposition)
+trainclassification,classes,classnames,trainlevel= LoadClassification(trainseqIDs,trainseqrecords,classificationfilename, classificationposition)
+testclassification,testclasses,testclassnames,testlevel= LoadClassification(testseqIDs,testseqrecords,classificationfilename, classificationposition)
 		
 #search for a best match of a test sequence in a train dataset
-bestmatchlist,bestscorelist=SearchForBestMatch(testdataset,traindataset)
-	
+bestmatchlist,bestscorelist,bestsimlist,bestcoveragelist=ComputeBestBLASTscore(testdataset,traindataset,mincoverage)
+#compute variation for reference sequences
+variation={}
+if optthreshold<0:
+	if jsonvariationfilename=="":
+		jsonvariationfilename = GetBase(traindataset) + "." + str(classificationposition) + ".variation"
+		if not os.path.isfile(jsonvariationfilename):
+			ComputeVariations(jsonvariationfilename,classes,classnames,mincoverage)
+
+if os.path.exists(jsonvariationfilename)==True:
+	with open(jsonvariationfilename) as variation_file:
+		variation = json.load(variation_file,encoding='latin1')	
+
 #Get the best label for a test sequence based on its best match
-bestlabels=GetBestMatchLabels(trainclassification,trainseqIDs,bestmatchlist,bestscorelist,optthreshold)
+bestlabels,count=GetBestMatchLabels(trainclassification,trainseqIDs,bestmatchlist,bestscorelist,optthreshold,variation)
 
 #Save prediction by searching 
-reportfilename=GetBase(testdataset) + ".blast.classified"
-SavePrediction(trainclassification,testclassification,testseqIDs,bestlabels,bestscorelist,reportfilename)
-	
+reportfilename=GetBase(testdataset) + "." + trainlevel + ".blast.classified"
+SavePrediction(trainclassification,testclassification,testseqIDs,bestlabels,bestscorelist,bestsimlist,bestcoveragelist,bestmatchlist,optthreshold,variation,reportfilename)
+print("Number of classified sequences: " + str(count))
+print("The result is saved in file  " + reportfilename + ".")
 

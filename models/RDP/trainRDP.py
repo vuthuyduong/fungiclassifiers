@@ -143,13 +143,12 @@ def LoadClassification(seqids,classificationfilename,pos):
 				if word=="order":
 					orderpos=i
 				if word=="class":
-					orderclass=i
+					classpos=i
 				if word=="phylum":
 					phylumpos=i
 				if word=="kingdom":
 					kingdompos=i
 				i=i+1
-					
 			continue 
 		kingdom=""
 		phylum=""
@@ -246,7 +245,6 @@ def LoadClassification(seqids,classificationfilename,pos):
 	return species,genera,families,orders,classes,phyla,kingdoms,classifications,labels,rank
 
 def GenerateTaxaIDs(species,genera,families,orders,classes,phyla,kingdoms,taxaidfilename):
-	classificationfile=open(classificationfilename)
 	taxids=[]
 	taxa=[]
 	parenttaxids=[]
@@ -367,10 +365,26 @@ def GenerateRDFFastaFile(seqids,labels,classifications,trainfastafilename,rdpfas
 					subseqs.append(seq)
 					seqList.append(subseqs)
 			seqid=line.rstrip().replace(">","")
+			seq=""
 			rdpfastafile.write(">" + seqid + "\t" + classifications[seqids.index(seqid)] + "\n")
 		else:
-			seq=line.rstrip()
+			seq=seq + line.rstrip()
 			rdpfastafile.write(line)
+	if seqid !="":
+		i=seqids.index(seqid)
+		label=labels[i]
+		if label in classes:
+			j=classes.index(label)
+			seqIDList[j].append(seqid)
+			seqList[j].append(seq)
+		else:
+			classes.append(label)
+			subseqids=[]
+			subseqids.append(seqid)
+			seqIDList.append(subseqids)
+			subseqs=[]
+			subseqs.append(seq)
+			seqList.append(subseqs)			
 	rdpfastafile.close()
 	trainfastafile.close()
 	return classes,seqIDList,seqList
@@ -449,16 +463,18 @@ modelname = basefilename + "_rdp_classifier"
 if level !="":
 	modelname=basefilename + "_" + level + "_rdp_classifier"
 if os.path.isdir(modelname) == False:
-	os.system("mkdir " + modelname)
+	os.system("mkdir " + modelname)	
+basename=basefilename + "_" + level + "_rdp_classifier"
+if "/" in basename:
+	basename = basename[len(basename)-basename.rindex("/"):]
 os.system("cp " + rdpclassifierpath + "/classifier/samplefiles/rRNAClassifier.properties " + modelname + "/")
 traincommand="java -Xmx1g -jar " + rdpclassifierpath + "/classifier.jar train -o " + modelname + " -s " + rdpfastafilename + " -t " + rdptaxaidfilename
 os.system(traincommand)
 #save seqids for each classification
-jsonfilename=modelname + "/" + modelname + ".classes"
+jsonfilename=modelname + "/" + basename + ".classes"
 SaveClasses(jsonfilename,classes,seqIDList,seqList)
-
 #save config	
-configfilename=modelname + "/" + modelname + ".config"
+configfilename=modelname + "/" + basename + ".config"
 SaveConfig(configfilename,modelname,fastafilename,jsonfilename,classificationfilename,classificationposition)
 	
 	
