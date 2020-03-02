@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# FILE: trainingresults2report.py
+# FILE: evaluateCNN.py
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
@@ -7,6 +7,7 @@ import math
 import numpy as np
 import os
 
+from sklearn.metrics import precision_recall_fscore_support
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import Convolution1D
@@ -21,7 +22,12 @@ from datetime import timedelta
 
 matrixfilename=sys.argv[1] # the matrix obtained by fasta2matrix combined with taxonomic classification
 datapath=sys.argv[2] #deeplearing results'path
-
+reportfilename=""
+if len(sys.argv) > 3:
+	reportfilename=sys.argv[3]
+evalnumber=0 
+if len(sys.argv) >4:
+	evalnumber=int(sys.argv[4])
 def create_model(nb_classes,input_length):
 	model = Sequential()
 	model.add(Convolution1D(5,5, border_mode='valid', input_dim=1,input_length=input_length)) #input_dim
@@ -31,6 +37,7 @@ def create_model(nb_classes,input_length):
 	model.add(Activation('relu'))
 	model.add(MaxPooling1D(pool_length=2,border_mode='valid'))
 	model.add(Flatten())
+	
 	##MLP
 	model.add(Dense(500))
 	model.add(Activation('relu'))
@@ -38,6 +45,7 @@ def create_model(nb_classes,input_length):
 	model.add(Dense(nb_classes))
 	model.add(Activation('softmax'))
 	model.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy'])
+	print(model.summary())
 	return model
 
 
@@ -55,20 +63,24 @@ def train_and_evaluate_model (model, datatr, labelstr, datate, labelste,nb_class
 	preds = model.predict_classes(datate,verbose = 0)
 	end=datetime.now()
 	t2=(end-beginning).total_seconds()
+	probas = model.predict_proba(datate)
 	classifying_score = model.evaluate(datate, labelste_bin,verbose=0)
-	return preds, labelste,t1,t2
-
+	return preds,probas,labelste,training_score,classifying_score,t1,t2 
 
 
 def GetBase(filename):
-	return filename[:-(len(filename)-filename.rindex("."))]
+	base=filename
+	if "." in filename:
+		base=filename[:-(len(filename)-filename.rindex("."))]
+	if "/" in base:
+		base=base[base.rindex("/")+1:]
+	return base  
 
 def LoadClassification(matrixfilename):
 	records= list(open(matrixfilename, "r"))
 	records=records[1:]
 	classification=[]
 	seqnames=[]
-	length=0
 	X=[]
 	for seq in records:
 		elements=seq.split(",")
@@ -88,24 +100,9 @@ def LoadClassification(matrixfilename):
 	#X = X/data_max
 	return X,Y,classification,seqnames,len(classes),len(X[0])
 
-
-
-def ComputeAccuracy(train_labels,testids,test_labels,pred_labels):
-	acc=0
-	identified=0
-	unidentifiedlist=[]
-#	acc = sum((abs(test_labels-pred_labels)>0)==False)/len(test_labels)
-	for i in range(0,len(testids)):
-		if test_labels[i] in train_labels:
-			if test_labels[i]==pred_labels[i]:
-				acc=acc+1
-			identified=identified+1
-		else:
-			unidentifiedlist.append(testids[i])
-		
-	if identified >0:
-		acc=float(acc)/float(identified)
-	return acc,unidentifiedlist
+def CalculateMetrics(train_labels,testids,test_labels,pred_labels): 
+	precision,recall,fscore,support=precision_recall_fscore_support(test_labels,pred_labels,average='micro')
+	return precision,recall,fscore
 
 
 def GetAllLabels(trainids,train_labels,testids,test_labels):
@@ -121,23 +118,24 @@ def GetAllLabels(trainids,train_labels,testids,test_labels):
 
 	return labels
 
-def SavePrediction(classification,seqnames,alllabels,testids,pred_labels,outputname):
+def SavePrediction(classification,seqnames,alllabels,testids,pred_labels,probas,outputname):
 	output=open(outputname,"w")
-	output.write("Sequence index\tSequenceID\tClassification\tPrediction\n")
-	k=0
-	for i in testids:
+	output.write("Sequence index\tSequenceID\tClassification\tPrediction\tProbability\n")
+	i=0
+	for id in testids:
+		proba =probas[i][pred_labels[i]]
 		predictedname=""
-		if pred_labels[k] in alllabels:
-			j=alllabels.index(pred_labels[k])
+		if pred_labels[i] in alllabels:
+			j=alllabels.index(pred_labels[i])
 			predictedname=classification[j]
-		output.write(str(i) + "\t" + str(seqnames[i]) + "\t" + classification[i] + "\t"  + predictedname + "\n")
-		k=k+1
+		output.write(str(id) + "\t" + str(seqnames[id]) + "\t" + classification[id] + "\t"  + predictedname +  "\t" + str(proba) + "\n")
+		i=i+1
 	output.close()
 ##############################################################################
 # MAIN
 ##############################################################################
-
-reportfilename=GetBase(matrixfilename) + ".cnn.report"
+if reportfilename=="":
+	reportfilename=GetBase(matrixfilename) + ".cnn.report"
 
 #load seq records
 #seqrecords = list(SeqIO.parse(fastafilename, "fasta"))
@@ -149,10 +147,13 @@ X,Y,classification,seqnames,nb_classes,input_length= LoadClassification(matrixfi
 #generate fasta files for training and test dataset
 filenames = os.listdir(datapath)
 prefix = GetBase(matrixfilename) 
+if "." in prefix:
+	prefix=prefix[0:prefix.index(".")]
 train_prefix = "train_" + prefix
 test_prefix="test_"+prefix
 pred_predix="preds_"+prefix
-
+testids=[]
+trainids=[]
 datasets=[]
 for filename in filenames:
 	if not ".npy" in filename:
@@ -167,10 +168,30 @@ for filename in filenames:
 			datasets.append(basefilename.replace("test_","").replace(".labels",""))			
 
 
+#check if the output file exists
+reportexists=False
+evaluateddatasets=[]
+if os.path.isfile(reportfilename)==True:
+	report=open(reportfilename)
+	next(report)
+	for line in report:
+		if line.rstrip()=="":
+			continue
+		testdataset=line.split("\t")[0]
+		dataset=testdataset.split("test_")[1]
+		print(dataset)
+		evaluateddatasets.append(dataset)
+	report.close()
+	reportexists=True
 #generate report
-report=open(reportfilename,"w")
-report.write("Test dataset\tNumber of sequences in the test dataset\tTrain dataset\tNumber of sequences in the train dataset\tAccuracy of CNN\tNumber of unidentified sequences by CNN\tTraining time\tClassifying time\n")
+if reportexists==False:
+	report=open(reportfilename,"w")
+	report.write("Test dataset\tNumber of sequences in the test dataset\tTrain dataset\tNumber of sequences in the train dataset\tNumber of unidentified sequences\tTraining time\tClassifying time\tCreation time\n")
+	report.close()
+i=0
 for dataset in datasets:
+	if dataset in evaluateddatasets:
+		continue
 	print(dataset)
 	testdataset=datapath+"/test_"+dataset
 	traindataset=datapath+"/train_"+dataset
@@ -183,25 +204,38 @@ for dataset in datasets:
 	
 
 	#train the data
+	beginning=datetime.now()
 	model = None # Clearing the NN.
 	model = create_model(nb_classes,input_length)
-	pred,Y_test,t1,t2 = train_and_evaluate_model(model, X[trainids], Y[trainids], X[testids], Y[testids],nb_classes)
-	np.save(datapath + "/preds_" + dataset + ".labels",pred)
+	end=datetime.now()
+	creationtime=(end-beginning).total_seconds()
+	pred,probas,Y_test,training_score,classifying_score,t1,t2 = train_and_evaluate_model(model, X[trainids], Y[trainids], X[testids], Y[testids],nb_classes)
+	np.save(datapath + "/preds_" + dataset + ".cnn.labels",pred)
 
 	#load the predicted labels of the test dataset
-	preds_labels=np.load(datapath+"/preds_"+dataset+".labels.npy")
+	preds_labels=np.load(datapath+"/preds_"+ dataset + ".cnn.labels.npy")
 
 	#get all labels
 	alllabels=GetAllLabels(trainids,train_labels,testids,test_labels)
 
-	#calulate accuracy for deeplearning
-	acc_of_deeplearning,unidentifiedlist_by_deeplearning=ComputeAccuracy(train_labels,testids,test_labels,preds_labels)
-
+	#calulate metrics
+	#precision,recall,fscore,unidentifiedlist=CalculateMetrics(train_labels,testids,test_labels,preds_labels)
+	#get unidentified list
+	unidentifiedlist=[]
+	for i in range(0,len(testids)):
+		if test_labels[i] not in train_labels:
+			unidentifiedlist.append(testids[i])
 	#save prediction by deeplearning
-	deeplearning_output=datapath+"/test_"+dataset+".cnn.out"
-	SavePrediction(classification,seqnames,alllabels,testids,preds_labels,deeplearning_output)
+	deeplearning_output=datapath+"/test_"+dataset+".cnn.classified"
+	SavePrediction(classification,seqnames,alllabels,testids,preds_labels,probas,deeplearning_output)
+	
 	#Print the result
-	report.write(testdataset + "\t" + str(len(testids)) + "\t" + traindataset + "\t" + str(len(trainids)) + "\t" + str(acc_of_deeplearning)+ "\t" + str(len(unidentifiedlist_by_deeplearning)) + "\t" + str(t1) + "\t" + str(t2) + "\n")
-	print(testdataset + "\t" + str(len(testids)) +  "\t" + traindataset + "\t" + str(len(trainids)) + "\t" + str(acc_of_deeplearning)+ "\t" + str(len(unidentifiedlist_by_deeplearning)) + "\t" + str(t1) + "\t" + str(t2) +"\n")
-
-report.close()
+	report=open(reportfilename,"a")
+	report.write(testdataset + "\t" + str(len(testids)) + "\t" + traindataset + "\t" + str(len(trainids)) + "\t" + str(len(unidentifiedlist)) + "\t" + str(t1) + "\t" + str(t2) + "\t" + str(creationtime) + "\n")
+	report.close()
+	print(testdataset + "\t" + str(len(testids)) +  "\t" + traindataset + "\t" + str(len(trainids)) + str(len(unidentifiedlist)) + "\t" + str(t1) + "\t" + str(t2) + "\t" + str(creationtime) + "\n")
+	i=i+1
+	if i==evalnumber:
+		break
+print("The running time of the model is saved in the file " + reportfilename + ". The results of the classification are saved as .cnn.classified files in the folder " + datapath + "." )
+#report.close()

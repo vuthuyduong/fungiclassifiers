@@ -19,8 +19,9 @@ for line in classificationfile:
 	if line.startswith("#"):
 		continue 
 	taxa=line.split("\t")
-	seqids.append(taxa[0].replace(">","").rstrip())
-	classification.append(taxa[classificationposition].rstrip())
+	if classificationposition < len(taxa):
+		seqids.append(taxa[0].replace(">","").rstrip())
+		classification.append(taxa[classificationposition].rstrip())
 matrixfile = open(matrixfilename)
 header = matrixfile.readline()
 outputFile.write(header)

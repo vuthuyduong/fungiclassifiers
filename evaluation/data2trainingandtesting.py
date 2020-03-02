@@ -14,7 +14,7 @@ import numpy as np
 
 #parameters: sys.argv[1] = input dataset as matrix of k-mers
 nome_train=sys.argv[1].split(".")[0]				
-fold_number = 4
+fold_number = 10
 if len(sys.argv) >2:
 	fold_number =int(sys.argv[2])
 
@@ -48,7 +48,7 @@ if __name__ == "__main__":
 	if os.path.isdir("results") == False:
 		os.system("mkdir results")
 	i=1
-	for test, train in kfold.split(X, Y):
+	for train,test in kfold.split(X, Y):
                 np.save("results/train_"+nome_train + "_"+str(i),train)
                 np.save("results/test_"+nome_train + "_"+str(i),test)
                 np.save("results/train_"+nome_train + "_"+str(i)+".labels",Y[train])

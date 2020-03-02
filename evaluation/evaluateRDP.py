@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# FILE: trainingresults2report.py
+# FILE: evaluateRDP.py
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
@@ -8,19 +8,108 @@ import numpy as np
 import os
 from Bio import SeqIO
 #from keras.utils import np_utils
+from sklearn.metrics import precision_recall_fscore_support
 from datetime import datetime, date
 from datetime import timedelta
-
 
 fastafilename=sys.argv[1]
 classificationfilename=sys.argv[2] # 
 classificationposition=sys.argv[3] 
 datapath=sys.argv[4] #the folder containing the train and test datasets in .npy format
 rdpclassifierpath = sys.argv[5] # the path to the rdp classifier file classifier.jar
+reportfilename=""
+if len(sys.argv) > 6:
+	reportfilename=sys.argv[6]
 
 def GetBase(filename):
-	return filename[:-(len(filename)-filename.rindex("."))]
+	base=filename
+	if "." in filename:
+		base=filename[:-(len(filename)-filename.rindex("."))]
+	if "/" in base:
+		base=base[base.rindex("/")+1:]
+	return base 
 
+def GetUnidentifiedSpeciesName(seqid):
+	name="unidentified_species_of_" + seqid
+	return name
+
+def GetUnidentifiedGenusName(seqid,species):
+	name=""
+	if species!="":
+		name="unidentified_genus_of_" + species
+	else:
+		name="unidentified_genus_of_" + seqid
+	return name
+
+def GetUnidentifiedFamilyName(seqid,species,genus):
+	name=""
+	if genus!="":
+		name="unidentified_family_of_" + genus
+	elif species!="":
+		name="unidentified_family_of_" + species
+	else:
+		name="unidentified_family_of_" + seqid
+	return name
+
+def GetUnidentifiedOrderName(seqid,species,genus,family):
+	name=""
+	if family !="":
+		name="unidentified_order_of_" + family
+	elif genus!="":
+		name="unidentified_order_of_" + genus
+	elif species!="":
+		name="unidentified_order_of_" + species
+	else:
+		name="unidentified_order_of_" + seqid
+	return name
+
+def GetUnidentifiedClassName(seqid,species,genus,family,order):
+	name=""
+	if order!="":
+		name="unidentified_class_of_" + order
+	elif family !="":
+		name="unidentified_class_of_" + family
+	elif genus!="":
+		name="unidentified_class_of_" + genus
+	elif species!="":
+		name="unidentified_class_of_" + species
+	else:
+		name="unidentified_class_of_" + seqid
+	return name
+
+def GetUnidentifiedPhylumName(seqid,species,genus,family,order,bioclass):
+	name=""
+	if bioclass!="":
+		name="unidentified_phylum_of_" + bioclass
+	elif order!="":
+		name="unidentified_phylum_of_" + order
+	elif family !="":
+		name="unidentified_phylum_of_" + family
+	elif genus!="":
+		name="unidentified_phylum_of_" + genus
+	elif species!="":
+		name="unidentified_phylum_of_" + species
+	else:
+		name="unidentified_phylum_of_" + seqid
+	return name
+
+def GetUnidentifiedKingdomName(seqid,species,genus,family,order,bioclass,phylum):
+	name=""
+	if phylum!="":
+		name="unidentified_kingdom_of_" + phylum
+	elif bioclass!="":
+		name="unidentified_kingdom_of_" + bioclass
+	elif order!="":
+		name="unidentified_kingdom_of_" + order
+	elif family !="":
+		name="unidentified_kingdom_of_" + family
+	elif genus!="":
+		name="unidentified_kingdom_of_" + genus
+	elif species!="":
+		name="unidentified_kingdom_of_" + species
+	else:
+		name="unidentified_kingdom_of_" + seqid
+	return name
 def LoadClassification(seqids,classificationfilename,pos):
 	kingdompos=0
 	phylumpos=1 #the position of the phyla in the classification file
@@ -41,14 +130,16 @@ def LoadClassification(seqids,classificationfilename,pos):
 	labels=[""] * len(seqids)
 	level= 0 #kingdom
 	sep="\t"
+	#load species, genera, families, orders, classes, phyla, kingdoms for sequences
 	for line in classificationfile:
+		line=unicode(line,errors='ignore')
 		if ";" in line:
 			sep=";"
 		words=line.split(sep)
 		if line.startswith("#"):			
 			i=0
 			for word in words:
-				word=word.rstrip()
+				word=word.lower().rstrip()
 				if word=="species":
 					speciespos=i
 				if word=="genus":
@@ -58,60 +149,109 @@ def LoadClassification(seqids,classificationfilename,pos):
 				if word=="order":
 					orderpos=i
 				if word=="class":
-					orderclass=i
+					classpos=i
 				if word=="phylum":
 					phylumpos=i
 				if word=="kingdom":
 					kingdompos=i
-			if pos==speciespos:
-				level=6
-			if pos==genuspos:
-				level=5
-			if pos==familypos:
-				level=4
-			if pos==orderpos:
-				level=3
-			if pos==classpos:
-				level=2
-			if pos==phylumpos:
-				level=1	
-			if pos==kingdompos:
-				level=1			
+				i=i+1
 			continue 
+		kingdom=""
+		phylum=""
+		bioclass=""
+		order=""
+		family=""
+		genus=""
+		spec=""
+		if kingdompos>0 and len(words)>kingdompos:
+			kingdom=words[kingdompos].rstrip()
+		if phylumpos>0 and len(words)>phylumpos:
+			phylum=words[phylumpos].rstrip()
+		if classpos>0 and len(words)>classpos:
+			bioclass=words[classpos].rstrip()
+		if orderpos>0 and len(words)>orderpos:
+			order=words[orderpos].rstrip()
+		if familypos>0 and len(words)>familypos:
+			family=words[familypos].rstrip()
+		if genuspos>0 and len(words)>genuspos:
+			genus=words[genuspos].rstrip()
+		if speciespos>0 and len(words)>speciespos:
+			spec=words[speciespos].rstrip()
 		seqid=words[0].replace(">","").rstrip()
+		if kingdom=="":
+			kingdom=GetUnidentifiedKingdomName(seqid,spec,genus,family,order,bioclass,phylum)
+		if phylum=="":
+			phylum=GetUnidentifiedPhylumName(seqid,spec,genus,family,order,bioclass)
+		if bioclass=="":
+			bioclass=GetUnidentifiedClassName(seqid,spec,genus,family,order)
+		if order=="":
+			order=GetUnidentifiedOrderName(seqid,spec,genus,family)
+		if family=="":
+			family=GetUnidentifiedFamilyName(seqid,spec,genus)
+		if genus=="":
+			genus=GetUnidentifiedGenusName(seqid,spec)
+		if spec=="":
+			spec=GetUnidentifiedSpeciesName(seqid)
+		label=""
+		if pos==speciespos:
+			level=6
+			label=spec
+			rank="species"
+		if pos==genuspos:
+			level=5
+			label=genus
+			rank="genus"
+		if pos==familypos:
+			level=4
+			label=family
+			rank="family"
+		if pos==orderpos:
+			level=3
+			label=order
+			rank="order"
+		if pos==classpos:
+			level=2
+			label=bioclass
+			rank="class"
+		if pos==phylumpos:
+			level=1	
+			label=phylum
+			rank="phylum"
+		if pos==kingdompos:
+			level=1	
+			label=kingdom
+			rank="kingdom"
 		if seqid in seqids:
 			index=seqids.index(seqid)
 			classification="Root"
 			kingdom="Fungi"
 			if level >=0:
-				if kingdompos >0:
-					kingdom=words[kingdompos].rstrip()
 				kingdoms[index]= kingdom
 				classification=classification + ";" + kingdom
 			if level >=1:
-				phyla[index] = words[phylumpos].rstrip()
-				classification=classification + ";" + words[phylumpos].rstrip()
+				phyla[index] = phylum
+				classification=classification + ";" + phylum
 			if level >=2:
-				classes[index]= words[classpos].rstrip()
-				classification=classification + ";" +  words[classpos].rstrip()
+				classes[index]= bioclass
+				classification=classification + ";" +  bioclass
 			if level >=3:
-				orders[index]=words[orderpos].rstrip()
-				classification=classification + ";" + words[orderpos].rstrip()
+				orders[index]=order
+				classification=classification + ";" + order
 			if level>=4:
-				families[index]=words[familypos].rstrip()
-				classification=classification + ";" + words[familypos].rstrip()
+				families[index]=family
+				classification=classification + ";" + family
 			if level>=5:
-				genera[index]=words[genuspos].rstrip()
-				classification=classification + ";" + words[genuspos].rstrip()
+				genera[index]=genus
+				classification=classification + ";" + genus
 			if level>=6:
-				species[index]=words[speciespos].rstrip()
-				classification=classification + ";" + words[speciespos].rstrip()
+				species[index]=spec
+				classification=classification + ";" + spec
 			classifications[index]=classification
-			labels[index]=words[pos].rstrip()
-	return species,genera,families,orders,classes,phyla,kingdoms,classifications,labels
+			labels[index]=label
+	return species,genera,families,orders,classes,phyla,kingdoms,classifications,labels,rank
 
 def GenerateTaxaIDs(species,genera,families,orders,classes,phyla,kingdoms,taxaidfilename):
-	classificationfile=open(classificationfilename)
+	#classificationfile=open(classificationfilename)
 	taxids=[]
 	taxa=[]
 	parenttaxids=[]
@@ -189,7 +329,7 @@ def GenerateTaxaIDs(species,genera,families,orders,classes,phyla,kingdoms,taxaid
 		species_id=len(taxa)
 		if len(species) > i:
 			if species[i] in taxa:
-				species_id=taxa.index(species[i])
+				species_id=taxa.index(species[i])	
 			elif species[i] != "":
 				taxids.append(len(taxa))
 				taxa.append(species[i])
@@ -228,29 +368,15 @@ def GenerateFastafile(prefixfilename,ids,seqrecords):
 		i=i+1	
 	seqfile.close()
 
-def ComputeAccuracy(train_labels,testids,test_labels,pred_labels):
-	acc=0
-	identified=0
-	unidentifiedlist=[]
-#	acc = sum((abs(test_labels-pred_labels)>0)==False)/len(test_labels)
-	for i in range(0,len(testids)):
-		if test_labels[i] in train_labels:
-			if test_labels[i]==pred_labels[i]:
-				acc=acc+1
-			identified=identified+1
-		else:
-			unidentifiedlist.append(testids[i])
-		
-	if identified >0:
-		acc=float(acc)/float(identified)
-	return acc,unidentifiedlist
+def CalculateMetrics(train_labels,testids,test_labels,pred_labels): 
+	precision,recall,fscore,support=precision_recall_fscore_support(test_labels,pred_labels,average='micro')
+	return precision,recall,fscore
 
 def GetSeqIDs(ids,seqrecords):
 	seqids=[]
 	for id in ids:
 		seqids.append(seqrecords[id].id)
 	return seqids
-
 
 def GetPredictedLabels(testseqids,rdpclassifiedfilename):
 	predlabels =[""] * len(testseqids)
@@ -269,19 +395,20 @@ def GetPredictedLabels(testseqids,rdpclassifiedfilename):
 	rdpfile.close()
 	return predlabels,scores,ranks
 
-def SavePrediction(testids,testseqids,testlabels,predlabels,outputname):
+def SavePrediction(testids,testseqids,testlabels,predlabels,probas,outputname):
 	output=open(outputname,"w")
-	output.write("Sequence index\tSequenceID\tClassification\tPrediction\tn")
+	output.write("Sequence index\tSequenceID\tClassification\tPrediction\tProbability\n")
 	i=0
 	for id in testids:
-		output.write(str(id) + "\t" + testseqids[i] + "\t" + testlabels[i] + "\t"  + predlabels[i] + "\n")
+		proba=probas[i]
+		output.write(str(id) + "\t" + testseqids[i] + "\t" + testlabels[i] + "\t"  + predlabels[i] + "\t" + str(proba) + "\n")
 		i=i+1
 	output.close()
 ##############################################################################
 # MAIN
 ##############################################################################
-
-reportfilename=GetBase(fastafilename) + ".rdp.report"
+if reportfilename=="":
+	reportfilename=GetBase(fastafilename) + ".rdp.report"
 
 path=sys.argv[0]
 path=path[:-(len(path)-path.rindex("/")-1)]
@@ -293,27 +420,30 @@ filenames = os.listdir(datapath)
 prefix = GetBase(fastafilename) 
 if "/" in prefix:
 	prefix =prefix[prefix.rindex("/")+1:]
+if "." in prefix:
+	prefix=prefix[0:prefix.index(".")]	
 train_prefix = "train_" + prefix
 test_prefix="test_" + prefix
 pred_predix="preds_" + prefix
 
 datasets=[]
-
+print(test_prefix)
 for filename in filenames:
 	if not ".npy" in filename:
 		continue 
 	basefilename = GetBase(filename)
-	if (filename.startswith(test_prefix)) and ("tanh" not in filename):
+	if (filename.startswith(test_prefix)) and ("labels" not in filename):
 		testids = np.load(datapath+"/"+filename)
 		GenerateFastafile(datapath+"/"+basefilename,testids,seqrecords)
 		if not basefilename.replace("test_","") in datasets:
 			datasets.append(basefilename.replace("test_",""))
-	if (filename.startswith(train_prefix)) and ("tanh" not in filename):
+	if (filename.startswith(train_prefix)) and ("labels" not in filename):
 		trainids = np.load(datapath+"/"+filename)
 		GenerateFastafile(datapath+"/"+basefilename,trainids,seqrecords)		
+
 #generate report
 report=open(reportfilename,"w")
-report.write("Test dataset\tNumber of sequences in the test dataset\tTrain dataset\tNumber of sequences in the train dataset\tAccuracy of RDP model\tNumber of unidentified sequences by RDP model\tTraining time\tClassifying time\n")
+report.write("Test dataset\tNumber of sequences in the test dataset\tTrain dataset\tNumber of sequences in the train dataset\tNumber of unidentified sequences\tTraining time\tClassifying time\n")
 for dataset in datasets:
 	print(dataset)
 	#load testids, trainids:
@@ -327,9 +457,9 @@ for dataset in datasets:
 
 	#train the data using rdp model
 	trainseqids = GetSeqIDs(trainids,seqrecords)
-
+	
 	#load taxonomic classifcation of the train dataset
-	species,genera,families,orders,classes,phyla,kingdoms,classifications,trainlabels=LoadClassification(trainseqids,classificationfilename,int(classificationposition))
+	species,genera,families,orders,classes,phyla,kingdoms,classifications,trainlabels,rank=LoadClassification(trainseqids,classificationfilename,int(classificationposition))
 		
 	#generate the taxaid file for the rdp model
 	GenerateTaxaIDs(species,genera,families,orders,classes,phyla,kingdoms,rdptaxaidfilename)
@@ -355,17 +485,24 @@ for dataset in datasets:
 	t2=(end-beginning).total_seconds()
 	#load classification result
 	testseqids = GetSeqIDs(testids,seqrecords)
-	predlabels,scores,ranks=GetPredictedLabels(testseqids,rdpclassifiedfilename)	
+	predlabels,probas,ranks=GetPredictedLabels(testseqids,rdpclassifiedfilename)	
 
 	#load given taxonomic classifcation of the test dataset
-	testspecies,testgenera,testfamilies,testorders,testclasses,testphyla,testkingdoms,testclassifications,testlabels=LoadClassification(testseqids,classificationfilename,int(classificationposition))
+	testspecies,testgenera,testfamilies,testorders,testclasses,testphyla,testkingdoms,testclassifications,testlabels,rank=LoadClassification(testseqids,classificationfilename,int(classificationposition))
 
-	#Caculate the accuracy based on rdp
-	acc_of_rdp,unidentifiedlist_by_rdp=ComputeAccuracy(trainlabels,testids,testlabels,predlabels)
-	report.write(testdataset + "\t" + str(len(testids)) + "\t" + traindataset + "\t" + str(len(trainids)) + "\t" + str(acc_of_rdp)+ "\t" + str(len(unidentifiedlist_by_rdp)) + "\t" + str(t1) + "\t" + str(t2) + "\n")
+	#calulate metrics
+	#precision,recall,fscore=CalculateMetrics(trainlabels,testids,testlabels,predlabels)
+	
+	#get unidentified list
+	unidentifiedlist=[]
+	for i in range(0,len(testids)):
+		if testlabels[i] not in trainlabels:
+			unidentifiedlist.append(testids[i])
+			
 	#Save prediction by rdp
-	rdp_output=datapath+"/test_"+dataset+"_by_rdp.out"
-	SavePrediction(testids,testseqids,testlabels,predlabels,rdp_output)
-	print(testdataset + "\t" + str(len(testids)) +  "\t" + traindataset + "\t" + str(len(trainids)) + "\t" + str(acc_of_rdp)+ "\t" + str(len(unidentifiedlist_by_rdp)) + "\t" + str(t1) + "\t" + str(t2) + "\n")
-
+	rdp_output=datapath+"/test_"+dataset+".rdp.classified"
+	SavePrediction(testids,testseqids,testlabels,predlabels,probas,rdp_output)
+	report.write(testdataset + "\t" + str(len(testids)) + "\t" + traindataset + "\t" + str(len(trainids))  + "\t" + str(len(unidentifiedlist)) + "\t" + str(t1) + "\t" + str(t2) + "\n")
+	print(testdataset + "\t" + str(len(testids)) +  "\t" + traindataset + "\t" + str(len(trainids)) + "\t" + str(len(unidentifiedlist)) + "\t" + str(t1) + "\t" + str(t2) +"\n")
+print("The running time of the model is saved in the file " + reportfilename + ". The results of the classification are saved as .rdp.classified files in the folder " + datapath + "." )
 report.close()
