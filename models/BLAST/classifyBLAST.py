@@ -3,8 +3,10 @@
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
+if sys.version_info[0] >= 3:
+	unicode = str
 import numpy as np
-import os
+import os, argparse
 from Bio import SeqIO
 import json
 import multiprocessing
@@ -13,20 +15,46 @@ import random
 nproc=multiprocessing.cpu_count()
 #from keras.utils import np_utils
 
+parser=argparse.ArgumentParser(prog='classifyRDP.py',  
+							   usage="%(prog)s [options] -i fastafile -r referencefastafile -t optthreshold -cn classificationfilename -p classificationposition -mp minproba -mc mincoverage ",
+							   description='''Script that classifies the sequences of the fasta files using BLAST classification. The classified sequences with a probability less than minproba will be verified using BLAST. The mincoverage is given for BLAST comparision. The json file is the the variation of the sequences within each group of the training dataset. This file is created during the training of the model, and used optionally for the verification of the classification. ''',
+							   epilog="""Written by Duong Vu duong.t.vu@gmail.com""",
+   )
 
-testdataset=sys.argv[1]
-traindataset=sys.argv[2]
-classificationfilename = sys.argv[3]
-classificationposition =int(sys.argv[4])
-mincoverage=300
-if len(sys.argv) >5:
-	mincoverage = float(sys.argv[5])
-optthreshold=-1 #the optimal threshold for classification, if optthreshold=-1, the threshold of the group will be taken 
-if len(sys.argv) >6:
-	optthreshold = float(sys.argv[6])	
-jsonvariationfilename = "" #json format, optional
-if len(sys.argv) >7:
-	jsonvariationfilename = sys.argv[7]
+parser.add_argument('-i','--input', required=True, help='the fasta file to be classified.')
+parser.add_argument('-r','--reference', required=True, help='the reference fasta file.')
+parser.add_argument('-o','--out', help='The folder name containing the model and associated files.') #optional
+parser.add_argument('-cn','--classification', required=True, help='the classification file in tab. format.')
+parser.add_argument('-p','--classificationpos', required=True, type=int, default=0, help='the classification position to load the classification.')
+parser.add_argument('-t','--threshold', required=True, type=float, default=0.97, help='The threshold for the classification.')
+parser.add_argument('-mp','--minproba', type=float, default=1.1, help='Optional. The minimum probability for verifying the classification results.')
+parser.add_argument('-mc','--mincoverage', type=int, default=300, help='Optinal. Minimum coverage required for the identitiy of the BLAST comparison.')
+parser.add_argument('-j','--variation', help='Optinal. The json file containing the variation within each class of the classifier.')
+
+args=parser.parse_args()
+testdataset= args.input
+traindataset = args.reference
+optthreshold=args.threshold
+minprobaforBlast=args.minproba
+mincoverage = args.mincoverage
+classificationfilename=args.classification
+classificationposition=args.classificationpos
+jsonvariationfilename=args.variation
+reportfilename=args.out
+
+#testdataset=sys.argv[1]
+#traindataset=sys.argv[2]
+#classificationfilename = sys.argv[3]
+#classificationposition =int(sys.argv[4])
+#mincoverage=300
+#if len(sys.argv) >5:
+#	mincoverage = float(sys.argv[5])
+#optthreshold=-1 #the optimal threshold for classification, if optthreshold=-1, the threshold of the group will be taken 
+#if len(sys.argv) >6:
+#	optthreshold = float(sys.argv[6])	
+#jsonvariationfilename = "" #json format, optional
+#if len(sys.argv) >7:
+#	jsonvariationfilename = sys.argv[7]
 def GetBase(filename):
 	return filename[:-(len(filename)-filename.rindex("."))]
 
@@ -301,16 +329,17 @@ if optthreshold<0:
 		jsonvariationfilename = GetBase(traindataset) + "." + str(classificationposition) + ".variation"
 		if not os.path.isfile(jsonvariationfilename):
 			ComputeVariations(jsonvariationfilename,classes,classnames,mincoverage)
-
-if os.path.exists(jsonvariationfilename)==True:
-	with open(jsonvariationfilename) as variation_file:
-		variation = json.load(variation_file,encoding='latin1')	
+if jsonvariationfilename !=None: 
+	if os.path.exists(jsonvariationfilename)==True:
+		with open(jsonvariationfilename) as variation_file:
+			variation = json.load(variation_file,encoding='latin1')	
 
 #Get the best label for a test sequence based on its best match
 bestlabels,count=GetBestMatchLabels(trainclassification,trainseqIDs,bestmatchlist,bestscorelist,optthreshold,variation)
 
 #Save prediction by searching 
-reportfilename=GetBase(testdataset) + "." + trainlevel + ".blast.classified"
+if reportfilename==None or reportfilename=="":	
+	reportfilename=GetBase(testdataset) + "." + trainlevel + ".blast.classified"
 SavePrediction(trainclassification,testclassification,testseqIDs,bestlabels,bestscorelist,bestsimlist,bestcoveragelist,bestmatchlist,optthreshold,variation,reportfilename)
 print("Number of classified sequences: " + str(count))
 print("The result is saved in file  " + reportfilename + ".")

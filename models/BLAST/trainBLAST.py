@@ -4,7 +4,7 @@
 # CREATE DATE: 07 June 2019
 import sys
 import numpy as np
-import os
+import os, argparse
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -13,26 +13,50 @@ import multiprocessing
 nproc=multiprocessing.cpu_count()
 #from keras.utils import np_utils
 
+parser=argparse.ArgumentParser(prog='predictlocally.py', 
+							   usage="%(prog)s [options] -i fastafile -c classificationfile,-p classificationposition -st startingthreshold -et endthreshold -s step",
+							   description='''Script that predicts an optimal threshold to separate the sequences based on the given classification''',
+							   epilog="""Written by Duong Vu duong.t.vu@gmail.com""",
+   )
+
+parser.add_argument('-i','--input', required=True, help='the fasta file')
+parser.add_argument('-o','--out', help='The output containing a list of threshold and the associately computed F-measure. The optimal threshold is the one producing the highest F-measure.') #optional
+parser.add_argument('-c','--classification', required=True, help='the classification file in tab. format.')
+parser.add_argument('-p','--classificationpos', required=True, type=int, default=0, help='the classification positions for the prediction.')
+parser.add_argument('-st','--startingthreshold', type=float, default=0.97, help='starting threshold')
+parser.add_argument('-et','--endthreshold', type=float, default=1, help='ending threshold')
+parser.add_argument('-s','--step', type=float, default=0.001, help='the step to be increased for the threshold after each step of the prediction.')
+parser.add_argument('-mc','--mincoverage', type=int, default=300, help='minimum coverage required for the identitiy of the BLAST comparison.')
+args=parser.parse_args()
+traindataset= args.input
+trainclassificationfilename=args.classification
+trainclassificationposition=args.classificationpos
+t1 = args.startingthreshold
+t2=args.endthreshold
+step=args.step
+mincoverage=args.mincoverage
+modelname=args.out
+
 #looking for the best threshold for classification
-traindataset=sys.argv[1]
-trainclassificationfilename = sys.argv[2]
-trainclassificationposition =int(sys.argv[3])
-t1=0 #the optimal threshold for classification by clustering in case t2 is not given. Otherwise it is the begin threshold to predict an optimal threshold for clustering
-if len(sys.argv) >4: 
-	t1 = float(sys.argv[4])
-opthreshold=t1
-t2=1 #the end threshold used to predict optimal threshold for classification
-if len(sys.argv) > 5:
-	t2 = float(sys.argv[5])
-step = 0.001
-if len(sys.argv) > 6:
-	step = float(sys.argv[6])
-mincoverage=300
-if len(sys.argv) > 7:
-	mincoverage = int(sys.argv[7])
-modelname=""
-if len(sys.argv) >8:
-	modelname=sys.argv[8]
+#traindataset=sys.argv[1]
+#trainclassificationfilename = sys.argv[2]
+#trainclassificationposition =int(sys.argv[3])
+#t1=0 #the optimal threshold for classification by clustering in case t2 is not given. Otherwise it is the begin threshold to predict an optimal threshold for clustering
+#if len(sys.argv) >4: 
+#	t1 = float(sys.argv[4])
+#opthreshold=t1
+#t2=1 #the end threshold used to predict optimal threshold for classification
+#if len(sys.argv) > 5:
+#	t2 = float(sys.argv[5])
+#step = 0.001
+#if len(sys.argv) > 6:
+#	step = float(sys.argv[6])
+#mincoverage=300
+#if len(sys.argv) > 7:
+#	mincoverage = int(sys.argv[7])
+#modelname=""
+#if len(sys.argv) >8:
+#	modelname=sys.argv[8]
 
 def load_data(modelname,basename,fastafilename,classificationfilename,classificationposition):
 	#load classification
@@ -328,7 +352,7 @@ def SaveConfig(configfilename,newtraindataset,optfilename,jsonvariationfilename,
 path=sys.argv[0]
 path=path[:-(len(path)-path.rindex("/")-1)]
 filename=GetBase(traindataset)
-if modelname=="":
+if modelname==None or modelname=="":
 	modelname=filename.replace(".","_") + "_blast_classifier"
 if not os.path.isdir(modelname):
 	os.system("mkdir " + modelname)
