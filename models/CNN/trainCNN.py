@@ -2,26 +2,42 @@
 # FILE: trainCNN.py
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
-from sklearn.model_selection import StratifiedKFold
 import sys
-import os
+import os, argparse
 from keras.models import Sequential
 from keras.layers import Dense
-from keras.layers import Convolution1D
-from keras.datasets import mnist
-from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Convolution1D, MaxPooling1D
+from keras.layers import Dropout, Activation, Flatten
 from keras.utils import np_utils
-from keras import backend as K
 import numpy as np
 import json
 
-fastafilename=sys.argv[1]
-classificationfilename=sys.argv[2] #taxonomy file 
-classificationlevel=int(sys.argv[3]) #the level of classification to get taxa from the taxonomy file
-k = 6
-if len(sys.argv) >4:
-	k= int(sys.argv[4])
+
+parser=argparse.ArgumentParser(prog='trainCNN.py', 
+							   usage="%(prog)s [options] -i fastafile -c classificationfile,-p classificationposition",
+							   description='''Script that trains a CNN model to classify sequences''',
+							   epilog="""Written by Duong Vu duong.t.vu@gmail.com""",
+   )
+
+parser.add_argument('-i','--input', required=True, help='the fasta file')
+parser.add_argument('-o','--out', help='The folder name containing the model and associated files.') #optional
+parser.add_argument('-c','--classification', required=True, help='the classification file in tab. format.')
+parser.add_argument('-p','--classificationpos', required=True, type=int, default=0, help='the classification position to load the classification.')
+parser.add_argument('-k','--kmer', type=int, default=6, help='the k-mer for the representation of the sequences.')
+
+args=parser.parse_args()
+fastafilename= args.input
+classificationfilename=args.classification
+classificationlevel=args.classificationpos
+k = args.kmer
+modelname=args.out
+
+#fastafilename=sys.argv[1]
+#classificationfilename=sys.argv[2] #taxonomy file 
+#classificationlevel=int(sys.argv[3]) #the level of classification to get taxa from the taxonomy file
+#k = 6
+#if len(sys.argv) >4:
+#	k= int(sys.argv[4])
 
 def GetBase(filename):
 	return filename[:-(len(filename)-filename.rindex("."))]
@@ -194,9 +210,11 @@ if __name__ == "__main__":
 	trainlabels_bin=np_utils.to_categorical(trainlabels, nb_classes)
 	model.fit(traindata, trainlabels_bin, nb_epoch=100, batch_size=20, verbose = 0)
 	#save model
-	modelname=filename.replace(".","_") + "_cnn_classifier"
-	if level !="":
-		modelname=filename + "_" + level + "_cnn_classifier"
+#	modelname=filename.replace(".","_") + "_cnn_classifier"
+	if modelname==None or modelname=="":
+		modelname=filename.replace(".","_") + "_cnn_classifier" 
+		if level !="":
+			modelname=filename + "_" + level + "_cnn_classifier"
 	basename=modelname
 	if "/" in modelname:
 		basename=modelname[modelname.rindex("/")+1:]
@@ -211,6 +229,6 @@ if __name__ == "__main__":
 	#save config	
 	configfilename=modelname + "/" + basename + ".config"
 	SaveConfig(configfilename,classifiername,fastafilename,jsonfilename,classificationfilename,classificationlevel,k,data_max)
-	
+	print("The classifier is saved in the folder " + modelname + ".")
 	
 
