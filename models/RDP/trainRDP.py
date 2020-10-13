@@ -3,19 +3,37 @@
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
-import math
-import numpy as np
-import os
+#import math
+#import numpy as np
+import os, argparse
 from Bio import SeqIO
 #from keras.utils import np_utils
 import json
-import random
+#import random
 
+parser=argparse.ArgumentParser(prog='trainRDP.py', 
+							   usage="%(prog)s [options] -i fastafile -c classificationfile,-p classificationposition -rdp rdpclassifierpath",
+							   description='''Script that trains a RDP model to classify sequences''',
+							   epilog="""Written by Duong Vu duong.t.vu@gmail.com""",
+   )
 
-fastafilename=sys.argv[1]
-classificationfilename=sys.argv[2] # 
-classificationposition=sys.argv[3] 
-rdpclassifierpath = sys.argv[4] # the path to the rdp classifier file classifier.jar
+parser.add_argument('-i','--input', required=True, help='the fasta file')
+parser.add_argument('-o','--out', help='The folder name containing the model and associated files.') #optional
+parser.add_argument('-c','--classification', required=True, help='the classification file in tab. format.')
+parser.add_argument('-p','--classificationpos', required=True, type=int, default=0, help='the classification position to load the classification.')
+parser.add_argument('-rdp','--rdpclassifierpath', required=True, help='the path of the RDP classifier classifier.jar.')
+
+args=parser.parse_args()
+fastafilename= args.input
+classificationfilename=args.classification
+classificationposition=args.classificationpos
+rdpclassifierpath = args.rdpclassifierpath
+modelname=args.out
+
+#fastafilename=sys.argv[1]
+#classificationfilename=sys.argv[2] # 
+#classificationposition=sys.argv[3] 
+#rdpclassifierpath = sys.argv[4] # the path to the rdp classifier file classifier.jar
 
 def GetBase(filename):
 	return filename[:-(len(filename)-filename.rindex("."))]
@@ -459,9 +477,10 @@ GenerateTaxaIDs(species,genera,families,orders,classes,phyla,kingdoms,rdptaxaidf
 classes,seqIDList,seqList=GenerateRDFFastaFile(trainseqids,trainlabels,classifications,fastafilename,rdpfastafilename)
 
 #save model
-modelname = basefilename + "_rdp_classifier"
-if level !="":
-	modelname=basefilename + "_" + level + "_rdp_classifier"
+if modelname==None or modelname=="":
+	modelname = basefilename + "_rdp_classifier"
+	if level !="":
+		modelname=basefilename + "_" + level + "_rdp_classifier"
 if os.path.isdir(modelname) == False:
 	os.system("mkdir " + modelname)	
 basename=basefilename + "_" + level + "_rdp_classifier"
@@ -476,6 +495,7 @@ SaveClasses(jsonfilename,classes,seqIDList,seqList)
 #save config	
 configfilename=modelname + "/" + basename + ".config"
 SaveConfig(configfilename,modelname,fastafilename,jsonfilename,classificationfilename,classificationposition)
+print("The classifier is saved in the folder " + modelname + ".")
 	
 	
 

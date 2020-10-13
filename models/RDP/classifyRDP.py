@@ -5,29 +5,53 @@
 import sys
 import math
 import numpy as np
-import os
+import os, argparse
 from Bio import SeqIO
 #from keras.utils import np_utils
 import json
 import random
 
+parser=argparse.ArgumentParser(prog='classifyRDP.py',  
+							   usage="%(prog)s [options] -i fastafile -c classifiername -cn classificationfilename -p classificationposition -rdp rdpclassifierpath -mp minproba -mc mincoverage -j variationjsonfilename",
+							   description='''Script that classifies the sequences of the fasta files using RDP model. The classified sequences with a probability less than minproba will be verified using BLAST. The mincoverage is given for BLAST comparision. The json file is the the variation of the sequences within each group of the training dataset. This file is created during the training of the model, and used optionally for the verification of the classification. ''',
+							   epilog="""Written by Duong Vu duong.t.vu@gmail.com""",
+   )
 
-modelname = sys.argv[1]
-rdpclassifierpath = sys.argv[2] # the path to the rdp classifier file classifier.jar
-testfastafilename=sys.argv[3]
-minprobaforBlast=1.1 #search for best match of the sequences by BLast only when minprobabilityforBlast <=1.0
-if len(sys.argv)>4:
-	minprobaforBlast=float(sys.argv[4])
-classificationfilename=""
-if len(sys.argv) > 5:
-	classificationfilename=sys.argv[5] #
-classificationposition=0
-if len(sys.argv) >6: 
-	classificationposition=sys.argv[6] 
+parser.add_argument('-i','--input', required=True, help='the fasta file')
+parser.add_argument('-rdp','--rdpclassifierpath', required=True, help='the path of the RDP classifier classifier.jar.')
+parser.add_argument('-o','--out', help='The folder name containing the model and associated files.') #optional
+parser.add_argument('-c','--classifier', required=True, help='the folder containing the classifier.')
+parser.add_argument('-cn','--classification', required=True, help='the classification file in tab. format.')
+parser.add_argument('-p','--classificationpos', required=True, type=int, default=0, help='the classification position to load the classification.')
+parser.add_argument('-mp','--minproba', type=float, default=1.1, help='Optional. The minimum probability for verifying the classification results.')
+parser.add_argument('-mc','--mincoverage', type=int, default=300, help='Optinal. Minimum coverage required for the identitiy of the BLAST comparison.')
+#parser.add_argument('-j','--variation', help='Optinal. The json file containing the variation within each class of the classifier.')
 
-mincoverage=300 #for ITS sequences, used only for comparing the sequences with BLAST
-if len(sys.argv)>7:
-	mincoverage=int(sys.argv[7])
+args=parser.parse_args()
+testfastafilename= args.input
+rdpclassifierpath = args.rdpclassifierpath
+modelname=args.classifier
+minprobaforBlast=args.minproba
+mincoverage = args.mincoverage
+classificationfilename=args.classification
+classificationposition=args.classificationposition
+rdp_output=args.out
+
+#modelname = sys.argv[1]
+#rdpclassifierpath = sys.argv[2] # the path to the rdp classifier file classifier.jar
+#testfastafilename=sys.argv[3]
+#minprobaforBlast=1.1 #search for best match of the sequences by BLast only when minprobabilityforBlast <=1.0
+#if len(sys.argv)>4:
+#	minprobaforBlast=float(sys.argv[4])
+#classificationfilename=""
+#if len(sys.argv) > 5:
+#	classificationfilename=sys.argv[5] #
+#classificationposition=0
+#if len(sys.argv) >6: 
+#	classificationposition=sys.argv[6] 
+#mincoverage=300 #for ITS sequences, used only for comparing the sequences with BLAST
+#if len(sys.argv)>7:
+#	mincoverage=int(sys.argv[7])
 
 def GetBase(filename):
 	if "." not in filename:
@@ -321,7 +345,8 @@ if "/" in basename:
 	basename=basename[basename.rindex("/")+1:]
 
 rdpclassifiedfilename = basefilename +  "." + basename + ".out"
-rdp_output=basefilename +  "." + basename + ".classified"
+if rdp_output==None or rdp_output=="":
+	rdp_output=basefilename +  "." + basename + ".classified"
 
 
 testcommand="java -Xmx1g -jar " + rdpclassifierpath + "/classifier.jar classify -t " + modelname + "/rRNAClassifier.properties -o " + rdpclassifiedfilename + " " + testfastafilename
