@@ -6,12 +6,14 @@
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
-import os
+if sys.version_info[0] >= 3:
+	unicode = str
+import os, argparse
 import numpy as np
 np.random.seed(1337)  # for reproducibility
-from sklearn.datasets import load_digits
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics.classification import accuracy_score
+#from sklearn.datasets import load_digits
+#from sklearn.model_selection import StratifiedKFold
+#from sklearn.metrics.classification import accuracy_score
 from dbn.tensorflow import SupervisedDBNClassification
 import json
 from Bio import SeqIO
@@ -19,17 +21,39 @@ import random
 import multiprocessing
 nproc=multiprocessing.cpu_count()
 
-modelname=sys.argv[1] #folder containing the classifier name and config file
-testfastafilename=sys.argv[2]
-minprobaforBlast=1.1 #search for best match of the sequences by BLast only when minprobabilityforBlast <=1.0
-if len(sys.argv)>3:
-	minprobaforBlast=float(sys.argv[3])
-mincoverage=300 #for ITS sequences, used only for comparing the sequences with BLAST
-if len(sys.argv)>4:
-	mincoverage=int(sys.argv[4])
-jsonvariationfilename="" #optional	
-if len(sys.argv)>5:
-	jsonvariationfilename=sys.argv[5]
+parser=argparse.ArgumentParser(prog='classifyDBN.py',  
+							   usage="%(prog)s [options] -i fastafile -c classifiername -mp minproba -mc mincoverage -j variationjsonfilename",
+							   description='''Script that classifies the sequences of the fasta files using DBN model. The classified sequences with a probability less than minproba will be verified using BLAST. The mincoverage is given for BLAST comparision. The json file is the the variation of the sequences within each group of the training dataset. This file is created during the training of the model, and used optionally for the verification of the classification. ''',
+							   epilog="""Written by Duong Vu duong.t.vu@gmail.com""",
+   )
+
+parser.add_argument('-i','--input', required=True, help='the fasta file')
+parser.add_argument('-o','--out', help='The folder name containing the model and associated files.') #optional
+parser.add_argument('-c','--classifier', required=True, help='the folder containing the classifier.')
+parser.add_argument('-mp','--minproba', type=float, default=1.1, help='Optional. The minimum probability for verifying the classification results.')
+parser.add_argument('-mc','--mincoverage', type=int, default=300, help='Optinal. Minimum coverage required for the identitiy of the BLAST comparison.')
+parser.add_argument('-j','--variation', help='Optinal. The json file containing the variation within each class of the classifier.')
+
+args=parser.parse_args()
+testfastafilename= args.input
+modelname=args.classifier
+minprobaforBlast=args.minproba
+mincoverage = args.mincoverage
+jsonvariationfilename=args.variation
+reportfilename=args.out
+
+#modelname=sys.argv[1] #folder containing the classifier name and config file
+#testfastafilename=sys.argv[2]
+#minprobaforBlast=1.1 #search for best match of the sequences by BLast only when minprobabilityforBlast <=1.0
+#if len(sys.argv)>3:
+#	minprobaforBlast=float(sys.argv[3])
+#mincoverage=300 #for ITS sequences, used only for comparing the sequences with BLAST
+#if len(sys.argv)>4:
+#	mincoverage=int(sys.argv[4])
+#jsonvariationfilename="" #optional	
+#if len(sys.argv)>5:
+#	jsonvariationfilename=sys.argv[5]
+
 def GetBase(filename):
 	return filename[:-(len(filename)-filename.rindex("."))]
 
@@ -335,7 +359,6 @@ if __name__ == "__main__":
 	path=path[:-(len(path)-path.rindex("/")-1)]
 	#load config of the model
 	jsonfilename,jsonvariationfilename,classifiername,classificationfilename,classificationlevel,k,data_max=LoadConfig(modelname)
-	print(jsonfilename)
 	#represent sequences of the test dataset as k-mer vector
 	testfilename=GetBase(testfastafilename)
 	matrixfilename=testfilename + "." + str(k) + ".matrix"
@@ -368,13 +391,15 @@ if __name__ == "__main__":
 #			configfile=open(configfilename,"a")
 #			configfile.write("Variation filename: " + jsonvariationfilename + "\n")
 #			configfile.close()
-		if os.path.exists(jsonvariationfilename):	   
-			with open(jsonvariationfilename) as variation_file:
-				variation = json.load(variation_file)	
+		if jsonvariationfilename != None:	
+			if os.path.exists(jsonvariationfilename):	   
+				with open(jsonvariationfilename) as variation_file:
+					variation = json.load(variation_file)	
 	#save prediction
 	basename=GetBase(classifiername)
 	if "/" in basename:
 		basename=basename[basename.rindex("/")+1:]
-	reportfilename=GetBase(testfastafilename) +  "." + basename + ".classified"
+	if reportfilename==None or reportfilename=="":		
+		reportfilename=GetBase(testfastafilename) +  "." + basename + ".classified"
 	SavePrediction(minprobaforBlast,mincoverage,classes,classeswithsequences,testseqIDs,testseqrecords,testlabels,pred_labels,probas,reportfilename)
 	print("The result is saved in the file: " + reportfilename)
