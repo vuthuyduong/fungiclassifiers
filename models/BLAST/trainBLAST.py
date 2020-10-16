@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# FILE: trainingresults2report.py
+# FILE: trainBLAST.py
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
@@ -13,7 +13,7 @@ import multiprocessing
 nproc=multiprocessing.cpu_count()
 #from keras.utils import np_utils
 
-parser=argparse.ArgumentParser(prog='predictlocally.py', 
+parser=argparse.ArgumentParser(prog='trainBLAST.py', 
 							   usage="%(prog)s [options] -i fastafile -c classificationfile,-p classificationposition -st startingthreshold -et endthreshold -s step",
 							   description='''Script that predicts an optimal threshold to separate the sequences based on the given classification''',
 							   epilog="""Written by Duong Vu duong.t.vu@gmail.com""",

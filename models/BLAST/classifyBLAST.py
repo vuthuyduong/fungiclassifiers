@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# FILE: trainingresults2report.py
+# FILE: classifyBLAST.py
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
@@ -15,7 +15,7 @@ import random
 nproc=multiprocessing.cpu_count()
 #from keras.utils import np_utils
 
-parser=argparse.ArgumentParser(prog='classifyRDP.py',  
+parser=argparse.ArgumentParser(prog='classifyBLAST.py',  
 							   usage="%(prog)s [options] -i fastafile -r referencefastafile -t optthreshold -cn classificationfilename -p classificationposition -mp minproba -mc mincoverage ",
 							   description='''Script that classifies the sequences of the fasta files using BLAST classification. The classified sequences with a probability less than minproba will be verified using BLAST. The mincoverage is given for BLAST comparision. The json file is the the variation of the sequences within each group of the training dataset. This file is created during the training of the model, and used optionally for the verification of the classification. ''',
 							   epilog="""Written by Duong Vu duong.t.vu@gmail.com""",
