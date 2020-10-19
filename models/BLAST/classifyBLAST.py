@@ -24,18 +24,16 @@ parser=argparse.ArgumentParser(prog='classifyBLAST.py',
 parser.add_argument('-i','--input', required=True, help='the fasta file to be classified.')
 parser.add_argument('-r','--reference', required=True, help='the reference fasta file.')
 parser.add_argument('-o','--out', help='The folder name containing the model and associated files.') #optional
-parser.add_argument('-cn','--classification', required=True, help='the classification file in tab. format.')
+parser.add_argument('-c','--classification', required=True, help='the classification file in tab. format.')
 parser.add_argument('-p','--classificationpos', required=True, type=int, default=0, help='the classification position to load the classification.')
 parser.add_argument('-t','--threshold', required=True, type=float, default=0.97, help='The threshold for the classification.')
-parser.add_argument('-mp','--minproba', type=float, default=1.1, help='Optional. The minimum probability for verifying the classification results.')
 parser.add_argument('-mc','--mincoverage', type=int, default=300, help='Optinal. Minimum coverage required for the identitiy of the BLAST comparison.')
-parser.add_argument('-j','--variation', help='Optinal. The json file containing the variation within each class of the classifier.')
+parser.add_argument('-j','--variation', help=' The json file containing the minimum threshold for each class of the classifier.Optinal. Only needed when there is no threshold for verification is given.')
 
 args=parser.parse_args()
 testdataset= args.input
 traindataset = args.reference
 optthreshold=args.threshold
-minprobaforBlast=args.minproba
 mincoverage = args.mincoverage
 classificationfilename=args.classification
 classificationposition=args.classificationpos
