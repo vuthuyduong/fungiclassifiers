@@ -3,6 +3,8 @@
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
+if sys.version_info[0] >= 3:
+	unicode = str
 import os, argparse
 from keras.models import Sequential
 from keras.layers import Dense
@@ -14,7 +16,7 @@ import json
 
 
 parser=argparse.ArgumentParser(prog='trainCNN.py', 
-							   usage="%(prog)s [options] -i fastafile -c classificationfile,-p classificationposition",
+							   usage="%(prog)s [options] -i fastafile -c classificationfile -p classificationposition",
 							   description='''Script that trains a CNN model to classify sequences''',
 							   epilog="""Written by Duong Vu duong.t.vu@gmail.com""",
    )
