@@ -3,17 +3,19 @@
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
+if sys.version_info[0] >= 3:
+	unicode = str
 import os, argparse
 import numpy as np
 np.random.seed(1337)  # for reproducibility
-from sklearn.datasets import load_digits
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics.classification import accuracy_score
+#from sklearn.datasets import load_digits
+#from sklearn.model_selection import StratifiedKFold
+#from sklearn.metrics.classification import accuracy_score
 from dbn.tensorflow import SupervisedDBNClassification
 import json
 
 parser=argparse.ArgumentParser(prog='trainDBN.py', 
-							   usage="%(prog)s [options] -i fastafile -c classificationfile,-p classificationposition",
+							   usage="%(prog)s [options] -i fastafile -c classificationfile -p classificationposition",
 							   description='''Script that trains a DBN model to classify sequences''',
 							   epilog="""Written by Duong Vu duong.t.vu@gmail.com""",
    )
