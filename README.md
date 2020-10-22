@@ -14,7 +14,7 @@ The [classifiers](https://github.com/vuthuyduong/fungiclassifiers/tree/master/cl
 
 Vu, D., Groenewald, M. & Verkley, G. Convolutional neural networks improve fungal classification. Sci Rep 10, 12628 (2020). https://doi.org/10.1038/s41598-020-69245-y
 
-## Publication
+## Pdf
 
 https://www.nature.com/articles/s41598-020-69245-y
 
