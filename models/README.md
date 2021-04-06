@@ -8,7 +8,7 @@ where 5 is the position of the genera in the classification traindataset.classif
 
 If we want to use another k-mer such as 8 for example, then use the following command:
 
-*CNN/trainCNN.py -i traindataset.fas -c traindataset.classification -p 5 -k 8*
+*CNN/trainCNN.py -i traindataset.fas -c traindataset.classification -p 5 -k 6*
 
 To classify the test dataset using the classifier obtained after the training:
 
@@ -26,7 +26,7 @@ where 5 is the position of the genera in the classification traindataset.classif
 
 If we want to use another k-mer such as 8 for example, then use the following command:
 
-*DBN/trainDBN.py -i traindataset.fas -c traindataset.classification -p 5 -k 8*
+*DBN/trainDBN.py -i traindataset.fas -c traindataset.classification -p 5 -k 6*
 
 To classify the test dataset using the classifier obtained after the training:
 
