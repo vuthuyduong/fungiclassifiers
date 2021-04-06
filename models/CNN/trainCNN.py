@@ -13,7 +13,7 @@ from keras.layers import Dropout, Activation, Flatten
 from keras.utils import np_utils
 import numpy as np
 import json
-
+from Bio import SeqIO
 
 parser=argparse.ArgumentParser(prog='trainCNN.py', 
 							   usage="%(prog)s [options] -i fastafile -c classificationfile -p classificationposition",
@@ -30,7 +30,7 @@ parser.add_argument('-k','--kmer', type=int, default=6, help='the k-mer for the 
 args=parser.parse_args()
 fastafilename= args.input
 classificationfilename=args.classification
-classificationlevel=args.classificationpos
+classificationpos=args.classificationpos
 k = args.kmer
 modelname=args.out
 
@@ -43,92 +43,139 @@ modelname=args.out
 
 def GetBase(filename):
 	return filename[:-(len(filename)-filename.rindex("."))]
+
+def GetTaxonomicClassification(classificationpos,header,texts):
+	classification=""
+	p_s=len(texts)
+	p_g=len(texts)
+	p_f=len(texts)
+	p_o=len(texts)
+	p_c=len(texts)
+	p_p=len(texts)
+	p_k=len(texts)
+	i=0
+	for text in header.split("\t"):
+		text=text.rstrip()
+		if text.lower()=="species":
+			p_s=i
+		elif text.lower()=="genus":
+			p_g=i	
+		elif text.lower()=="family":
+			p_f=i	
+		elif text.lower()=="order":
+			p_o=i	
+		elif text.lower()=="class":
+			p_c=i	
+		elif text.lower()=="phylum":
+			p_p=i	
+		elif text.lower()=="kingdom":
+			p_k=i	
+		i=i+1 
+	species="s__"
+	genus="g__"
+	family="f__"
+	order="o__" 
+	bioclass="c__"
+	phylum="p__"
+	kingdom="k__"
+	if p_s< len(texts):
+		species="s__" + texts[p_s].rstrip()
+	if p_g< len(texts):
+		genus="g__" + texts[p_g].rstrip()	
+	if p_f< len(texts):
+		family="f__" + texts[p_f].rstrip()	
+	if p_o< len(texts):
+		order="o__" + texts[p_o].rstrip()
+	if p_c< len(texts):
+		bioclass="c__" + texts[p_c].rstrip()	
+	if p_p< len(texts):
+		phylum="p__" + texts[p_p].rstrip()
+	if p_k< len(texts):
+		kingdom="k__" + texts[p_k].rstrip()	
+	if classificationpos==p_s:
+		classification=kingdom +";"+phylum +";"+bioclass +";"+order+";"+family + ";"+ genus+";"+species
+	elif classificationpos==p_g:
+		classification=kingdom +";"+phylum +";"+bioclass +";"+order+";"+family + ";"+ genus
+	elif classificationpos==p_f:
+		classification=kingdom +";"+phylum + ";"+bioclass +";"+order+";"+family 
+	elif classificationpos==p_o:
+		classification=kingdom +";"+phylum + ";"+bioclass + ";"+order
+	elif classificationpos==p_c:
+		classification=kingdom +";"+phylum + ";"+bioclass 
+	elif classificationpos==p_p:
+		classification=kingdom +";"+phylum
+	elif classificationpos==p_k:
+		classification=kingdom
+	else:
+		classification=texts[classificationpos]
+	return classification
 		
-def load_data(fastafilename,classificationfilename,classificationlevel):
+def load_data(modelname,fastafilename,classificationfilename,classificationpos):
+	#load seqrecords
+	seqids=[]
+	seqrecords=SeqIO.to_dict(SeqIO.parse(fastafilename, "fasta"))
 	#load classification
-	allseqids=[]
-	records= open(classificationfilename)
-	classification=[]
+	classificationfile= open(classificationfilename)
+	classnames=[]
 	level=""
-	for record in records:
-		texts=record.split("\t")
-		if record.startswith("#"):
-			if classificationlevel < len(texts):
-				level=texts[classificationlevel].rstrip()
+	newseqrecords=[]
+	classdict={}
+	header=""
+	for line in classificationfile:
+		texts=line.split("\t")
+		if line.startswith("#"):
+			header=line
+			if classificationpos < len(texts):
+				level=texts[classificationpos].rstrip()
 			continue 		
 		seqid=texts[0].replace(">","").rstrip()
+		if not seqid in seqrecords.keys():
+			continue
 		classname=""
-		if classificationlevel < len(texts):
-			classname=texts[classificationlevel].rstrip()
+		if classificationpos < len(texts):
+			classname=texts[classificationpos].rstrip()
+			#classname=unicode(classname,errors='ignore')
 		if classname !="":
-			allseqids.append(seqid)
-			classification.append(classname)
-	records.close()
-	classificationset=set(classification)
-	classes=list(classificationset)
-	#load fastafile, save a new fasta file containing only sequences having a classification
-	fastafile=open(fastafilename)
-	newfastafilename=GetBase(fastafilename) + "." + str(classificationlevel) + ".fasta"
-	newfastafile=open(newfastafilename,"w")
-	writetofile=False
-	seq=""
-	sequences=[]
-	seqids=[]
-	taxa=[]
-	for line in fastafile:
-		if line.startswith(">"):
-			if writetofile==True:
-				sequences.append(seq)
-			writetofile=False
-			seq=""
-			seqid=line.split("|")[0].replace(">","").rstrip()		
-			if seqid in allseqids:
-				index=allseqids.index(seqid)
-				taxonname=classification[index]
-				if taxonname !="":
-					#write to file
-					newfastafile.write(">" + seqid + "\n")
-					seqids.append(seqid)
-					taxa.append(taxonname)
-					writetofile=True
-		else:
-			if writetofile==True:
-				newfastafile.write(line)
-				seq=seq+line.rstrip()
-	if writetofile==True:
-		sequences.append(seq)
-	fastafile.close()
-	newfastafile.close()
-	return newfastafilename, seqids, sequences, taxa, classes,level
+			newseqrecords.append(seqrecords[seqid])
+			seqids.append(seqid)
+			classnames.append(classname)
+			classification=GetTaxonomicClassification(classificationpos,header,texts)
+			if classname in classdict.keys():
+				if len(classification) > classdict[classname]['classification']:
+					classdict[classname]['classification']=classification
+				classdict[classname]['seqids'].append(seqid)
+			else:	
+				classdict.setdefault(classname,{})
+				classdict[classname]['classification']=classification
+				classdict[classname]['seqids']=[seqid]
+	classificationfile.close()
+	basename=GetBase(fastafilename)
+	if "/" in basename:
+		basename=basename[basename.rindex("/")+1:]
+	newfastafilename=modelname + "/" + basename + "." + str(classificationpos) + ".fasta"
+	#write selected sequences to file
+	SeqIO.write(newseqrecords, newfastafilename, "fasta")
+	return newfastafilename,seqids,classnames,classdict,level
 
-def load_matrix(matrixfilename,seqids,sequences,taxa,classes):
+def load_matrix(matrixfilename,seqids,classnames,classdict):
 	#load matrix
 	vectors= list(open(matrixfilename, "r"))
 	vectors=vectors[1:]
 	X=[]
 	Y=[]
-	seqIDList=[]
-	seqList=[]
-	for i in range(0,len(classes)):
-		seqIDList.append([])
-		seqList.append([])
 	for vector in vectors:
 		elements=vector.split(",")
 		seqid=elements[0]
-		taxonname= taxa[seqids.index(seqid)]
-		seq=sequences[seqids.index(seqid)]
-		index=classes.index(taxonname)
+		taxonname= classnames[seqids.index(seqid)]
+		index=classdict.keys().index(taxonname)
 		Y.append(index)
 		X.append(elements[1:])
-		if seqid not in seqIDList[index]:
-			seqIDList[index].append(seqid)
-			seqList[index].append(seq)
 	X=np.array(X,dtype=float)
 	Y=np.array(Y,dtype=int)
 	data_max=0
 	#data_max= np.amax(X)
 	#X = X/data_max
-	return X,Y,len(classes),len(X[0]),data_max,seqIDList,seqList
+	return X,Y,len(set(classnames)),len(X[0]),data_max
 
 def create_model(nb_classes,input_length):
 	model = Sequential()
@@ -171,37 +218,40 @@ def SaveConfig(configfilename,classifiername,fastafilename,jsonfilename,classifi
 	configfile.write("Classes filename: " + jsonfilename + "\n")
 	configfile.close()	
 
-def SaveClasses(jsonfilename,classnames,seqIDList,seqList):
-	#create json dict
-	taxadict={}
-	i=0
-	count=0
-	for classname in classnames:	
-		classname=unicode(classname,errors='ignore')
-		currentclass=[]
-		j=0	   
-		for seqID in seqIDList[i]:
-			seq=seqList[i][j]
-			currentclass.append({'id': seqID, 'seq': seq})
-			j=j+1
-			count=count+1            
-		taxadict[classname]=currentclass
-		i=i+1
-	#write to file
+def GetLevel(classificationfilename,classificationpos):
+	classificationfile=open(classificationfilename)
+	header=next(classificationfile)
+	if header.startswith("#"):
+		level=header.split("\t")[classificationpos]				     
+		level=level.rstrip()
+	else:
+		level=str(classificationpos)   
+	return level
+
+def SaveClasses(jsonfilename,classdict):
+	#write json dict
 	with open(jsonfilename,"w") as json_file:
-		json.dump(taxadict,json_file,encoding='latin1')
+		json.dump(classdict,json_file,encoding='latin1')
 
 if __name__ == "__main__":
 	path=sys.argv[0]
 	path=path[:-(len(path)-path.rindex("/")-1)]
-	#load data
-	newfastafilename,seqids,sequences,taxa,classes,level = load_data(fastafilename,classificationfilename,classificationlevel)
-	#represent sequences as matrix of k-mer frequencies
 	filename=GetBase(fastafilename)
+	level=GetLevel(classificationfilename,classificationpos)
+	if modelname==None or modelname=="":
+		modelname=filename.replace(".","_") + "_cnn_classifier" 
+		if level !="":
+			modelname=filename + "_" + level + "_cnn_classifier"
+	basename=modelname
+	if "/" in modelname:
+		basename=modelname[modelname.rindex("/")+1:]
+	#load data
+	newfastafilename,seqids,classnames,classdict,level = load_data(modelname,fastafilename,classificationfilename,classificationpos)
+	#represent sequences as matrix of k-mer frequencies
 	matrixfilename=filename + "." + str(k) + ".matrix"
 	command=path + "fasta2matrix.py " +  str(k) + " " + newfastafilename + " " + matrixfilename
 	os.system(command)
-	X,Y,nb_classes,input_length,data_max,seqIDList,seqList = load_matrix(matrixfilename,seqids,sequences,taxa,classes)
+	X,Y,nb_classes,input_length,data_max = load_matrix(matrixfilename,seqids,classnames,classdict)
 	#train data
 	trainids=np.array(range(0,len(X)),dtype=int)
 	traindata=X[trainids]
@@ -213,13 +263,7 @@ if __name__ == "__main__":
 	model.fit(traindata, trainlabels_bin, nb_epoch=100, batch_size=20, verbose = 0)
 	#save model
 #	modelname=filename.replace(".","_") + "_cnn_classifier"
-	if modelname==None or modelname=="":
-		modelname=filename.replace(".","_") + "_cnn_classifier" 
-		if level !="":
-			modelname=filename + "_" + level + "_cnn_classifier"
-	basename=modelname
-	if "/" in modelname:
-		basename=modelname[modelname.rindex("/")+1:]
+	
 	if os.path.isdir(modelname) == False:
 		os.system("mkdir " + modelname)
 	#save model
@@ -227,10 +271,10 @@ if __name__ == "__main__":
 	model.save(classifiername)
 	#save seqids for each classification
 	jsonfilename=modelname + "/" + basename + ".classes"
-	SaveClasses(jsonfilename,classes,seqIDList,seqList)
+	SaveClasses(jsonfilename,classdict)
 	#save config	
 	configfilename=modelname + "/" + basename + ".config"
-	SaveConfig(configfilename,classifiername,fastafilename,jsonfilename,classificationfilename,classificationlevel,k,data_max)
+	SaveConfig(configfilename,classifiername,fastafilename,jsonfilename,classificationfilename,classificationpos,k,data_max)
 	print("The classifier is saved in the folder " + modelname + ".")
 	
 
