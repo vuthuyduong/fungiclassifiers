@@ -23,12 +23,11 @@ parser=argparse.ArgumentParser(prog='classifyBLAST.py',
 
 parser.add_argument('-i','--input', required=True, help='the fasta file to be classified.')
 parser.add_argument('-r','--reference', required=True, help='the reference fasta file.')
-parser.add_argument('-o','--out', help='The folder name containing the model and associated files.') #optional
-parser.add_argument('-c','--classification', required=True, help='the classification file in tab. format.')
-parser.add_argument('-p','--classificationpos', required=True, type=int, default=0, help='the classification position to load the classification.')
 parser.add_argument('-t','--threshold', required=True, type=float, default=0.97, help='The threshold for the classification.')
 parser.add_argument('-mc','--mincoverage', type=int, default=300, help='Optinal. Minimum coverage required for the identitiy of the BLAST comparison.')
-parser.add_argument('-j','--variation', help=' The json file containing the minimum threshold for each class of the classifier.Optinal. Only needed when there is no threshold for verification is given.')
+parser.add_argument('-o','--out', help='The folder name containing the model and associated files.') #optional
+parser.add_argument('-c','--classification',help='the classification file in tab. format.')#optinal
+parser.add_argument('-p','--classificationpos', type=int, default=0, help='the classification position to load the classification.')#optional
 
 args=parser.parse_args()
 testdataset= args.input
@@ -37,7 +36,6 @@ optthreshold=args.threshold
 mincoverage = args.mincoverage
 classificationfilename=args.classification
 classificationposition=args.classificationpos
-jsonvariationfilename=args.variation
 reportfilename=args.out
 
 #testdataset=sys.argv[1]
@@ -56,24 +54,94 @@ reportfilename=args.out
 def GetBase(filename):
 	return filename[:-(len(filename)-filename.rindex("."))]
 
+def GetTaxonomicClassification(classificationpos,header,texts):
+	classification=""
+	p_s=len(texts)
+	p_g=len(texts)
+	p_f=len(texts)
+	p_o=len(texts)
+	p_c=len(texts)
+	p_p=len(texts)
+	p_k=len(texts)
+	i=0
+	for text in header.split("\t"):
+		text=text.rstrip()
+		if text.lower()=="species":
+			p_s=i
+		elif text.lower()=="genus":
+			p_g=i	
+		elif text.lower()=="family":
+			p_f=i	
+		elif text.lower()=="order":
+			p_o=i	
+		elif text.lower()=="class":
+			p_c=i	
+		elif text.lower()=="phylum":
+			p_p=i	
+		elif text.lower()=="kingdom":
+			p_k=i	
+		i=i+1 
+	species="s__"
+	genus="g__"
+	family="f__"
+	order="o__" 
+	bioclass="c__"
+	phylum="p__"
+	kingdom="k__"
+	if p_s< len(texts):
+		species="s__" + texts[p_s].rstrip()
+	if p_g< len(texts):
+		genus="g__" + texts[p_g].rstrip()	
+	if p_f< len(texts):
+		family="f__" + texts[p_f].rstrip()	
+	if p_o< len(texts):
+		order="o__" + texts[p_o].rstrip()
+	if p_c< len(texts):
+		bioclass="c__" + texts[p_c].rstrip()	
+	if p_p< len(texts):
+		phylum="p__" + texts[p_p].rstrip()
+	if p_k< len(texts):
+		kingdom="k__" + texts[p_k].rstrip()	
+	if classificationpos==p_s:
+		classification=kingdom +";"+phylum +";"+bioclass +";"+order+";"+family + ";"+ genus+";"+species
+	elif classificationpos==p_g:
+		classification=kingdom +";"+phylum +";"+bioclass +";"+order+";"+family + ";"+ genus
+	elif classificationpos==p_f:
+		classification=kingdom +";"+phylum + ";"+bioclass +";"+order+";"+family 
+	elif classificationpos==p_o:
+		classification=kingdom +";"+phylum + ";"+bioclass + ";"+order
+	elif classificationpos==p_c:
+		classification=kingdom +";"+phylum + ";"+bioclass 
+	elif classificationpos==p_p:
+		classification=kingdom +";"+phylum
+	elif classificationpos==p_k:
+		classification=kingdom
+	else:
+		classification=texts[classificationpos]
+	return classification
+
 def LoadClassification(seqIDs,seqrecords,classificationfilename,pos):
 	classification=[""]*len(seqIDs)
+	fullclassification=[""]*len(seqIDs)
 	classes=[]
 	classnames=[]
 	level=str(pos)
 	if classificationfilename == "":
 		return classification
-	records= list(open(classificationfilename, "r"))
-	for line in records:
-		elements=line.split("\t")
+	classificationfile= list(open(classificationfilename, "r"))
+	header=""
+	for line in classificationfile:
+		texts=line.split("\t")
 		if line.startswith("#"):
-			level=elements[pos]
+			header=line		 
+			level=texts[pos]
 			continue 
-		seqid = elements[0].replace(">","").rstrip()
+		seqid = texts[0].replace(">","").rstrip()
 		if seqid in seqIDs:
 			index=seqIDs.index(seqid)
-			classname=elements[pos].rstrip()
+			classname=texts[pos].rstrip()
 			classification[index]=classname
+			fullclassification[index]=GetTaxonomicClassification(pos,header,texts)
 			if classname in classnames:
 				classid=classnames.index(classname)
 				classes[classid].append(seqrecords[index])
@@ -82,7 +150,7 @@ def LoadClassification(seqIDs,seqrecords,classificationfilename,pos):
 				seqs=[]
 				seqs.append(seqrecords[index])
 				classes.append(seqs)
-	return classification,classes,classnames,level
+	return fullclassification,classification,classes,classnames,level
 
 def GetSeqIndex(seqname,seqrecords):
 	i=0
@@ -92,103 +160,6 @@ def GetSeqIndex(seqname,seqrecords):
 		i = i + 1
 	return -1
 
-def ComputeBLASTscoreMatrix(fastafilename,records,mincoverage):
-	scorematrix = [[0 for x in range(len(records))] for y in range(len(records))] 
-	seqids=[]
-	for rec in records:
-		seqids.append(rec.id)
-	#blast
-	makedbcommand = "makeblastdb -in " + fastafilename + " -dbtype \'nucl\' " +  " -out db"
-	os.system(makedbcommand)
-	blastcommand = "blastn -query " + fastafilename + " -db  db -task blastn-short -outfmt 6 -out out.txt -num_threads " + str(nproc)
-	os.system(blastcommand)
-	
-	#read blast output
-	blastoutputfile = open("out.txt")
-	refid = ""
-	score=0
-	queryid=""
-	for line in blastoutputfile:
-		if line.rstrip()=="":
-			continue
-		words = line.split("\t")
-		queryid = words[0].rstrip()
-		refid = words[1].rstrip()
-		i = seqids.index(queryid)
-		j = seqids.index(refid)
-		pos1 = int(words[6])
-		pos2 = int(words[7])
-		iden = float(words[2]) 
-		sim=float(iden)/100
-		coverage=abs(pos2-pos1)
-		score=sim
-		if coverage < mincoverage:
-			score=float(score * coverage)/mincoverage
-		if scorematrix[i][j] < score:
-			scorematrix[i][j]=score
-			scorematrix[j][i]=score
-	os.system("rm out.txt")
-	return scorematrix
-
-def ComputeVariation(reffilename,mincoverage):
-	#load sequeces from the fasta files
-	records = list(SeqIO.parse(reffilename, "fasta"))
-	scorematrix=ComputeBLASTscoreMatrix(reffilename,records,mincoverage)
-	scorelist=[]
-	for i in range(0,len(scorematrix)-2):
-		for j in range(i+1,len(scorematrix)-1):
-			if i!=j:
-				scorelist.append(scorematrix[i][j])
-	threshold=1
-	minthreshold=1		
-	if len(scorelist) >0:
-		x=np.array(scorelist)
-		threshold=np.median(x)
-		minthreshold=np.min(x)
-	return threshold,minthreshold
-
-def EvaluateVariation(taxonname,sequences,mincoverage):
-	thresholds=[]
-	minthresholds=[] 
-	for i in range(0,10):
-		n=int(len(sequences)/10)
-		selectedindexes=random.sample(range(0, len(sequences)), k=n)
-		selectedsequences=[]
-		for index in selectedindexes:
-			selectedsequences.append(sequences[index])
-		fastafilename=taxonname.replace(" ","_") + ".fasta"
-		SeqIO.write(selectedsequences,fastafilename,"fasta")
-		threshold,minthreshold=ComputeVariation(fastafilename,mincoverage)
-		os.system("rm " + fastafilename)
-		thresholds.append(threshold)
-		minthresholds.append(minthreshold)
-	threshold = np.median(np.array(thresholds))
-	minthreshold =  np.median(np.array(minthresholds))
-	return threshold,minthreshold
-
-def ComputeVariations(variationfilename,classes,classnames,mincoverage):
-	#create json dict
-	variations={}
-	i=0
-	for taxonname in classnames:
-		sequences=classes[i]
-		if len(sequences) >0:
-			threshold=0
-			minthreshold=0
-			if len(sequences) < 100:				
-				fastafilename=taxonname.replace(" ","_") + ".fasta"
-				SeqIO.write(sequences,fastafilename,"fasta")
-				threshold,minthreshold=ComputeVariation(fastafilename,mincoverage)
-				os.system("rm " + fastafilename)
-			else:
-				threshold,minthreshold=EvaluateVariation(taxonname,sequences,mincoverage)
-			currentvariation={'Threshold': threshold, 'MinThreshold': minthreshold,'NumberOfSequences': len(sequences)}
-			variations[taxonname]=currentvariation
-		i=i+1	
-	#write to file
-	with open(variationfilename,"w") as json_file:
-		json.dump(variations,json_file,encoding='latin1')
-		
 def IndexSequences(filename):
 	indexedfilename = GetBase(filename) + ".indexed.fasta"
 	fastafile = open(filename)
@@ -250,23 +221,18 @@ def ComputeBestBLASTscore(query,reference,mincoverage):
 	os.system("rm out.txt")
 	return bestrefidlist,bestscorelist,bestsimlist,bestcoveragelist
 
-def GetBestMatchLabels(trainclassification,trainseqIDs,bestmatchlist,bestscorelist,opthreshold,variation):
+def GetBestMatchLabels(trainclassification,trainseqIDs,bestmatchlist,bestscorelist,opthreshold):
 	bestlabels=[]
 	i=0
 	count=0
 	for seqid in bestmatchlist:
 		if  seqid in trainseqIDs:
 			index=trainseqIDs.index(seqid)
-			classname=unicode(trainclassification[index],'latin1')
-			opt=0
-			if optthreshold >= 0:
-				opt=optthreshold
-			else:
-				opt=variation[classname]['Threshold']
-#			if threshold < optthreshold:
-#				opt=max(optthreshold -0.05,threshold)
-			if bestscorelist[i] >= opt:
-				bestlabels.append(trainclassification[index])
+			classname=trainclassification[index]
+			if sys.version_info[0] < 3:
+				classname=unicode(trainclassification[index],'latin1')
+			if bestscorelist[i] >= opthreshold:
+				bestlabels.append(classname)
 				count=count+1
 			else:
 			#no identification
@@ -276,24 +242,18 @@ def GetBestMatchLabels(trainclassification,trainseqIDs,bestmatchlist,bestscoreli
 		i=i+1
 	return bestlabels,count
 
-def SavePrediction(trainclassification,testclassification,testseqIDs,pred_labels,bestscorelist,bestsimlist,bestcoveragelist,bestrefidlist,opt,variation,outputname):
+def SavePrediction(fulltrainclassification,trainclassification,testclassification,testseqIDs,pred_labels,bestscorelist,bestsimlist,bestcoveragelist,bestrefidlist,opt,outputname):
 	output=open(outputname,"w")
-	output.write("Sequence index\tSequenceID\tClassification\tPrediction\tSimilarity core\tBLAST similarity score\tBLAST coverage\tBest match ID\tOptimal threshold\tThreshold\tMin threshold\tNumber of reference sequences\n")
+	output.write("Sequence index\tSequenceID\tGiven classification\tPrediction\tFull classification of prediction\tBLAST score\tBLAST similarity\tBLAST coverage\tBest match ID\tOptimal threshold\n")
 	for i in range(0,len(testseqIDs)):
 		testlabel=""
 		if len(testclassification) > i:
 			testlabel=testclassification[i]	
 			predlabel=pred_labels[i]
-			minthreshold=0
-			threshold=0
-			numberofsequences=0
-			if predlabel!="":
+			if predlabel!="" and sys.version_info[0] < 3:
 				predlabel=unicode(predlabel,'latin1')
-				if variation !={}:
-					threshold=variation[predlabel]['Threshold']
-					minthreshold=variation[predlabel]['MinThreshold']
-					numberofsequences=variation[predlabel]['NumberOfSequences']
-		output.write(str(i) + "\t" + str(testseqIDs[i]) + "\t" + testlabel + "\t"  + pred_labels[i] + "\t" + str(bestscorelist[i]) + "\t" + str(bestsimlist[i]) + "\t" + str(bestcoveragelist[i]) +  "\t" + bestrefidlist[i] + "\t" + str(opt) + "\t" + str(threshold) + "\t" + str(minthreshold) + "\t" + str(numberofsequences) + "\n")
+			classification=fulltrainclassification[trainclassification.index(predlabel)]
+		output.write(str(i) + "\t" + str(testseqIDs[i]) + "\t" + testlabel + "\t"  + pred_labels[i] + "\t" + classification +"\t" + str(bestscorelist[i]) + "\t" + str(bestsimlist[i]) + "\t" + str(bestcoveragelist[i]) +  "\t" + bestrefidlist[i] + "\t" + str(opt) +"\n")
 	output.close()
 
 ##############################################################################
@@ -315,30 +275,19 @@ for seq in testseqrecords:
 
 
 #Load classes, classification:
-trainclassification,classes,classnames,trainlevel= LoadClassification(trainseqIDs,trainseqrecords,classificationfilename, classificationposition)
-testclassification,testclasses,testclassnames,testlevel= LoadClassification(testseqIDs,testseqrecords,classificationfilename, classificationposition)
+fulltrainclassification,trainclassification,classes,classnames,trainlevel= LoadClassification(trainseqIDs,trainseqrecords,classificationfilename, classificationposition)
+fulltestclassification,testclassification,testclasses,testclassnames,testlevel= LoadClassification(testseqIDs,testseqrecords,classificationfilename, classificationposition)
 		
 #search for a best match of a test sequence in a train dataset
 bestmatchlist,bestscorelist,bestsimlist,bestcoveragelist=ComputeBestBLASTscore(testdataset,traindataset,mincoverage)
-#compute variation for reference sequences
-variation={}
-if optthreshold<0:
-	if jsonvariationfilename=="":
-		jsonvariationfilename = GetBase(traindataset) + "." + str(classificationposition) + ".variation"
-		if not os.path.isfile(jsonvariationfilename):
-			ComputeVariations(jsonvariationfilename,classes,classnames,mincoverage)
-if jsonvariationfilename !=None: 
-	if os.path.exists(jsonvariationfilename)==True:
-		with open(jsonvariationfilename) as variation_file:
-			variation = json.load(variation_file,encoding='latin1')	
 
 #Get the best label for a test sequence based on its best match
-bestlabels,count=GetBestMatchLabels(trainclassification,trainseqIDs,bestmatchlist,bestscorelist,optthreshold,variation)
+bestlabels,count=GetBestMatchLabels(trainclassification,trainseqIDs,bestmatchlist,bestscorelist,optthreshold)
 
 #Save prediction by searching 
 if reportfilename==None or reportfilename=="":	
 	reportfilename=GetBase(testdataset) + "." + trainlevel + ".blast.classified"
-SavePrediction(trainclassification,testclassification,testseqIDs,bestlabels,bestscorelist,bestsimlist,bestcoveragelist,bestmatchlist,optthreshold,variation,reportfilename)
+SavePrediction(fulltrainclassification,trainclassification,testclassification,testseqIDs,bestlabels,bestscorelist,bestsimlist,bestcoveragelist,bestmatchlist,optthreshold,reportfilename)
 print("Number of classified sequences: " + str(count))
 print("The result is saved in file  " + reportfilename + ".")
 

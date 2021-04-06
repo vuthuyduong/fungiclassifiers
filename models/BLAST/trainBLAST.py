@@ -37,119 +37,55 @@ step=args.step
 mincoverage=args.mincoverage
 modelname=args.out
 
-#looking for the best threshold for classification
-#traindataset=sys.argv[1]
-#trainclassificationfilename = sys.argv[2]
-#trainclassificationposition =int(sys.argv[3])
-#t1=0 #the optimal threshold for classification by clustering in case t2 is not given. Otherwise it is the begin threshold to predict an optimal threshold for clustering
-#if len(sys.argv) >4: 
-#	t1 = float(sys.argv[4])
-#opthreshold=t1
-#t2=1 #the end threshold used to predict optimal threshold for classification
-#if len(sys.argv) > 5:
-#	t2 = float(sys.argv[5])
-#step = 0.001
-#if len(sys.argv) > 6:
-#	step = float(sys.argv[6])
-#mincoverage=300
-#if len(sys.argv) > 7:
-#	mincoverage = int(sys.argv[7])
-#modelname=""
-#if len(sys.argv) >8:
-#	modelname=sys.argv[8]
-
-def load_data(modelname,basename,fastafilename,classificationfilename,classificationposition):
-	#load classification
-	allseqids=[]
-	records= open(classificationfilename)
-	allclassification=[]
-#	level=""
-	for record in records:
-		texts=record.split("\t")
-#		if record.startswith("#"):
-#			if classificationposition < len(texts):
-#				level=texts[classificationposition].rstrip()
-#			continue 		
-		seqid=texts[0].replace(">","").rstrip()
-		classname=""
-		if classificationposition < len(texts):
-			classname=texts[classificationposition].rstrip()
-		if classname !="":
-			allseqids.append(seqid)
-			allclassification.append(classname)
-	records.close()
-	#load fastafile, save a new fasta file containing only sequences having a classification
-	fastafile=open(fastafilename)
-	newfastafilename=GetBase(fastafilename)
-	if "/" in newfastafilename:
-		newfastafilename=newfastafilename[newfastafilename.rindex("/")+1:]
-	newfastafilename=modelname + "/" + GetBase(fastafilename) + "."+ str(classificationposition) + ".fasta"
-	newfastafile=open(newfastafilename,"w")
-	classes=[]
-	classnames=[]
-	classids=[]
-	writetofile=False
-	seq=""
-	seqid=""
-	taxonname=""
-	i=0
-	for line in fastafile:
-		if line.startswith(">"):
-			if writetofile==True:
-				seqrec=SeqIO.SeqRecord(seq=Seq(seq),id=seqid,description=seqid,name =seqid)
-				if taxonname in classnames:
-					index=classnames.index(taxonname)
-					classes[index].append(seqrec)
-					classids[index].append(i)
-				else:
-					classnames.append(taxonname)
-					seqs=[]
-					seqs.append(seqrec)
-					classes.append(seqs)
-					seqids=[]
-					seqids.append(i)
-					classids.append(seqids)	
-			writetofile=False
-			seqid=line.split("|")[0].replace(">","").replace(".1","").rstrip()		
-			if seqid in allseqids:
-				index=allseqids.index(seqid)
-				taxonname=allclassification[index]
-				if taxonname !="":
-					#write to file
-					newfastafile.write(">" + seqid + "\n")
-					i=i+1
-					writetofile=True
-		else:
-			if writetofile==True:
-				seq=line.rstrip()
-				newfastafile.write(line)
-	if writetofile==True:
-		seqrec=SeqIO.SeqRecord(seq=Seq(seq),id=seqid,description=seqid,name =seqid)
-		if taxonname in classnames:
-			index=classnames.index(taxonname)
-			classes[index].append(seqrec)
-			classids[index].append(i)
-		else:
-			classnames.append(taxonname)
-			seqs=[]
-			seqs.append(seqrec)
-			classes.append(seqs)
-			seqids=[]
-			seqids.append(i)
-			classids.append(seqids)			
-				
-	fastafile.close()
-	newfastafile.close()
-	return newfastafilename,classes,classnames,classids
-
 def GetBase(filename):
-	return filename[:-(len(filename)-filename.rindex("."))]
+	if "." in filename:
+		return filename[:-(len(filename)-filename.rindex("."))]
+	else:
+		return filename
 
-def ComputeBLASTscoreMatrix(fastafilename,seqrecords,mincoverage):
-	scorematrix = [[0 for x in range(len(seqrecords))] for y in range(len(seqrecords))] 
+def load_data(modelname,fastafilename,classificationfilename,classificationpos):
+	#load seqrecords
 	seqids=[]
-	for rec in seqrecords:
-		seqids.append(rec.id)
+	seqrecords=SeqIO.to_dict(SeqIO.parse(fastafilename, "fasta"))
+	#load classification
+	classificationfile= open(classificationfilename)
+	classnames=[]
+	newseqrecords=[]
+	classes=[]
+	for line in classificationfile:
+		texts=line.split("\t")
+		if line.startswith("#"):
+			continue 		
+		seqid=texts[0].replace(">","").rstrip()
+		if not seqid in seqrecords.keys():
+			continue
+		classname=""
+		if classificationpos < len(texts):
+			classname=texts[classificationpos].rstrip()
+			#classname=unicode(classname,errors='ignore')
+		if classname !="":
+			newseqrecords.append(seqrecords[seqid])
+			if classname in classnames:
+				classes[classnames.index(classname)].append(seqid)
+			else:	
+				classes.append([seqid])
+				classnames.append(classname)
+	classificationfile.close()
+	basename=GetBase(fastafilename)
+	if "/" in basename:
+		basename=basename[basename.rindex("/")+1:]
+	newfastafilename=modelname + "/" + basename + "." + str(classificationpos) + ".fasta"
+	#write selected sequences to file
+	SeqIO.write(newseqrecords, newfastafilename, "fasta")
+	return newfastafilename,classes
+
+
+
+def ComputeSim(fastafilename,seqrecords,mincoverage):
+	simmatrix={}
+	for seqid in seqrecords.keys():
+		simmatrix.setdefault(seqid,{})
+		simmatrix[seqid][seqid]=1
 	#blast
 	makedbcommand = "makeblastdb -in " + fastafilename + " -dbtype \'nucl\' " +  " -out db"
 	os.system(makedbcommand)
@@ -158,17 +94,13 @@ def ComputeBLASTscoreMatrix(fastafilename,seqrecords,mincoverage):
 	
 	#read blast output
 	blastoutputfile = open("out.txt")
-	refid = ""
 	score=0
-	queryid=""
 	for line in blastoutputfile:
 		if line.rstrip()=="":
 			continue
 		words = line.split("\t")
-		queryid = words[0].rstrip()
-		refid = words[1].rstrip()
-		i = seqids.index(queryid)
-		j = seqids.index(refid)
+		i = words[0].rstrip()
+		j = words[1].rstrip()
 		pos1 = int(words[6])
 		pos2 = int(words[7])
 		iden = float(words[2]) 
@@ -176,17 +108,21 @@ def ComputeBLASTscoreMatrix(fastafilename,seqrecords,mincoverage):
 		coverage=abs(pos2-pos1)
 		score=sim
 		if coverage < mincoverage:
-			score=float(score * coverage)/mincoverage
-		if scorematrix[i][j] < score:
-			scorematrix[i][j]=score
-			scorematrix[j][i]=score
+			score=float(score * coverage)/mincoverage	
+		if j in simmatrix[i].keys():
+			if simmatrix[i][j] < score:
+				simmatrix[i][j]=round(score,4)
+				simmatrix[j][i]=round(score,4)
+		else:
+			simmatrix[i][j]=round(score,4)
+			simmatrix[j][i]=round(score,4)
+		#simmatrix[j][i]=score
 	os.system("rm out.txt")
-	return scorematrix
-
+	return simmatrix
+		
 class PointDef:
-	def __init__(self, id,name,flag,neighbors,seqrecord):
+	def __init__(self, id,flag,neighbors,seqrecord):
 		self.id=id
-		self.name=name
 		self.flag=flag
 		self.neighbors = neighbors
 		self.seqrecord=seqrecord
@@ -196,27 +132,27 @@ class ClusterDef:
 		self.id=id
 		self.pointids=pointids
 
-def LoadNeighbors(seqrecords,scorematrix,threshold):
-	neighborlist=[]
-	for i in range(len(seqrecords)):
-		neighborlist.append([])
-	for i in range(0,len(seqrecords)-1):
-		for j in range(i+1,len(seqrecords)):
-				if scorematrix[i][j] >= threshold:
-					if (j not in neighborlist[i]):
-						neighborlist[i].append(j)
-					if (i not in neighborlist[j]):
-						neighborlist[j].append(i)
+def LoadNeighbors(seqids,simmatrix,threshold):
+	neighbordict={}
+	for seqid in seqids:
+		neighbordict.setdefault(seqid, [])
+	for i in seqids:
+		for j in seqids:
+			if not j in simmatrix[i].keys():
+				continue
+			if simmatrix[i][j] >= threshold:
+				if (j not in neighbordict[i]):
+					neighbordict[i].append(j)
+				if (i not in neighbordict[j]):
+					neighbordict[j].append(i)
 	#os.system("rm out.txt")
-	return neighborlist
+	return neighbordict
 
-def LoadPoints(neigborlist,seqrecords):
-	points=[]
-	i=0
-	for seqrecord in  seqrecords:
-		point = PointDef(i,seqrecord.id,False,neigborlist[i],seqrecord)
-		points.append(point)
-		i=i+1
+def LoadPoints(neigbordict,seqrecords):
+	points={}
+	for seqid in  seqrecords.keys():
+		point = PointDef(seqid,False,neigbordict[seqid],seqrecords[seqid])
+		points[seqid]=point
 	return points
 
 def ExpandCluster(root,cluster,points):
@@ -224,17 +160,15 @@ def ExpandCluster(root,cluster,points):
 		if points[i].flag==False:
 			points[i].flag=True
 			cluster.pointids.append(i)
-			#print("cluster id:" + str(cluster.id) + "\t" + str(len(cluster.pointids)))
 			ExpandCluster(points[i],cluster,points)		
 
 def Cluster(points,clusters):
-	for point in points:
-		if point.flag==False:
-			point.flag=True
+	for pointid in points.keys():
+		if points[pointid].flag==False:
+			points[pointid].flag=True
 			cluster = ClusterDef(len(clusters),[])
-			cluster.pointids.append(point.id)
-			#print("cluster id:" + str(cluster.id) + "\t" + str(len(cluster.pointids)))
-			ExpandCluster(point, cluster,points)
+			cluster.pointids.append(pointid)
+			ExpandCluster(points[pointid], cluster,points)
 			clusters.append(cluster)
 		
 def ComputeFmeasure(classes,clusters):
@@ -252,83 +186,89 @@ def ComputeFmeasure(classes,clusters):
 		f = f +	(len(group)*m)	
 	return float(f)/float(n) 
 
-def PredictOpt(reportfilename,traindataset,classificationfilename,classificationpos,t1,t2,step,mincoverage,classids):
-	#load sequences
-	seqrecords=list(SeqIO.parse(traindataset, "fasta"))
-	if len(seqrecords)==0:
-		return 0,0
-	sys.setrecursionlimit(len(seqrecords)*2)
-	#seqrecords=SeqIO.to_dict(SeqIO.parse(fastafilename, "fasta"))
-	#load similarity matrix
-	scorematrix=ComputeBLASTscoreMatrix(traindataset,seqrecords,mincoverage)
-	t=t1
-	optthreshold=t1
+def LoadSim(simfilename):
+	simmatrix = {} #we use dictionary to reduce the memory constraints 
+	simfile = open(simfilename)
+	for line in simfile:
+		numbers=line.rstrip().split(" ")
+		i=numbers[0]
+		j=numbers[1]
+		if i not in simmatrix.keys():
+			simmatrix.setdefault(i, {})
+		if j not in simmatrix[i].keys():
+			simmatrix[i].setdefault(j, 0)
+		if float(numbers[2]) > simmatrix[i][j]:
+			simmatrix[i][j]=float(numbers[2])
+	simfile.close()		
+	return simmatrix
+
+def SaveSim(simmatrix,simfilename):
+	simfile=open(simfilename,"w")
+	for i in simmatrix.keys():
+		for j in simmatrix[i].keys():
+			simfile.write(str(i) + " " + str(j) + " " + str(simmatrix[i][j]) + "\n")
+	simfile.close()
+	
+def PredictOpt(predictiondict,simmatrix,records,classes,t1,t2,step,mincoverage):
+	optthreshold=0
 	bestFmeasure=0
-		#compute optimal threshold
-	optfile=open(reportfilename,"w")
-	optfile.write("Threshold\tFmeasure\n")
+	fmeasuredict={}
+	if 'cut-off' in predictiondict.keys():	
+		optthreshold=predictiondict['cut-off']
+	if 'confidence' in predictiondict.keys():		
+		bestFmeasure=predictiondict['confidence']
+	if 'fmeasures' in predictiondict.keys():			
+		fmeasuredict=predictiondict['fmeasures']
+	
+	sys.setrecursionlimit(len(records)*2)
+	#seqrecords=SeqIO.to_dict(SeqIO.parse(fastafilename, "fasta"))
+	t=round(t1,4)
 	while t < t2:
-		#load neighbors
-		neighborlist = LoadNeighbors(seqrecords,scorematrix,t)	
-		points=LoadPoints(neighborlist,seqrecords)
-		clusters=[]
-		Cluster(points,clusters)	
-		fmeasure=ComputeFmeasure(classids,clusters)
-		optfile.write(str(t) + "\t" + str(fmeasure) + "\n" )
+		print("Compute F-measure for " + str(t) + ":")
+		fmeasure=0
+		if str(t) in fmeasuredict.keys():
+			fmeasure=fmeasuredict[str(t)]
+		else:	
+			#compute fmeasure
+			neighbordict = LoadNeighbors(records.keys(),simmatrix,t)	
+			points=LoadPoints(neighbordict,records)
+			clusters=[]
+			Cluster(points,clusters)	
+			fmeasure=round(ComputeFmeasure(classes,clusters),4)
+			fmeasuredict[t]=fmeasure
 		if fmeasure > bestFmeasure:
 			bestFmeasure=fmeasure
 			optthreshold=t
-		t=t+step	
-	optfile.write("Opt threshold: " + str(optthreshold) + "\tBestFmeasure: " +  str(bestFmeasure) + "\n")
-	optfile.close()
-	return optthreshold,bestFmeasure
+		print(str(fmeasure))	
+		t=round(t+step,4)
+	predictiondict['cut-off']=optthreshold
+	predictiondict['confidence']=bestFmeasure
+	predictiondict['Number of sequences']=len(records)
+	predictiondict['Number of groups']=len(classes)
+	predictiondict['fmeasures']=fmeasuredict
 
-def ComputeVariation(reffilename,mincoverage):
-	#load sequeces from the fasta files
-	records = list(SeqIO.parse(reffilename, "fasta"))
-	scorematrix=ComputeBLASTscoreMatrix(reffilename,records,mincoverage)
-	scorelist=[]
-	for i in range(0,len(scorematrix)-2):
-		for j in range(i+1,len(scorematrix)-1):
-			scorelist.append(scorematrix[i][j])
-	threshold=1
-	minthreshold=1		
-	if len(scorelist) >0:
-		x=np.array(scorelist)
-		minthreshold=min(x)
-		threshold=min(x)
-		if threshold < np.mean(x)-0.2:
-			limit=np.percentile(x,30)
-			filtered_x=x[x>=limit]
-			threshold=min(filtered_x)
-		#threshold=statistics.median(scorelist)
-	return threshold,minthreshold
 
-def ComputeVariations(variationfilename,classes,classnames,mincoverage):
-	#create json dict
-	variations={}
-	i=0
-	for taxonname in classnames:
-		sequences=classes[i]
-		if len(sequences) >0:
-			fastafilename=taxonname.replace(" ","_") + ".fasta"
-			SeqIO.write(sequences,fastafilename,"fasta")
-			threshold,minthreshold=ComputeVariation(fastafilename,mincoverage)
-			currentvariation={'Threshold': threshold, 'MinThreshold': minthreshold,'NumberOfSequences': len(sequences)}
-			variations[taxonname]=currentvariation
-			os.system("rm " + fastafilename)
-		i=i+1	
-	#write to file
-	with open(variationfilename,"w") as json_file:
-		json.dump(variations,json_file,encoding='latin1')
+def LoadPrediction(optfilename):
+	existingprediction={}
+	#load classes
+	if os.path.exists(optfilename):
+		with open(optfilename) as json_file:
+			existingprediction = json.load(json_file)
+	return existingprediction
+
+def SavePrediction(predictiondict,optfilename):
+	#save the whole prediction file
+	with open(optfilename,"w") as json_file:
+		if sys.version_info[0] >= 3:
+			json.dump(predictiondict,json_file)
+		else:
+			json.dump(predictiondict,json_file,encoding='latin1')
 		
-def SaveConfig(configfilename,newtraindataset,optfilename,jsonvariationfilename,classificationfilename,classificationposition,t1,t2,step,mincoverage):
+def SaveConfig(configfilename,newtraindataset,simfilename,optfilename,classificationfilename,classificationposition,t1,t2,step,mincoverage):
 	if not newtraindataset.startswith("/"):
 		newtraindataset=os.getcwd() + "/" + newtraindataset
 	if not optfilename.startswith("/"):
 		optfilename=os.getcwd() + "/" + optfilename
-	if not jsonvariationfilename.startswith("/"):
-		jsonvariationfilename=os.getcwd() + "/" + jsonvariationfilename
 	if not classificationfilename.startswith("/"):
 		classificationfilename=os.getcwd() + "/" + classificationfilename
 	model="blast"
@@ -343,7 +283,7 @@ def SaveConfig(configfilename,newtraindataset,optfilename,jsonvariationfilename,
 	configfile.write("Fasta filename: " + newtraindataset + "\n")
 	configfile.write("Classification filename: " + classificationfilename + "\n")
 	configfile.write("Column number to be classified: " + str(classificationposition) + "\n")
-	configfile.write("Variation filename: " + jsonvariationfilename + "\n")
+	configfile.write("Similarity filename: " + simfilename + "\n")
 	configfile.close()	
 
 ##############################################################################
@@ -359,23 +299,35 @@ if not os.path.isdir(modelname):
 basename=modelname
 if "/" in modelname:
 	basename=modelname[modelname.rindex("/")+1:]
-optfilename=modelname + "/" + basename + ".opt"
+optfilename=modelname + "/" + basename + "." + str(trainclassificationposition) +".opt"
+simfilename=modelname + "/" + basename + ".sim"
 
 #load data
-newtraindataset,classes,classnames,classids = load_data(modelname,basename,traindataset,trainclassificationfilename,trainclassificationposition)
+newtraindataset,classes = load_data(modelname,traindataset,trainclassificationfilename,trainclassificationposition)
 
 #predict optimal threshold	
 optthreshold=t1
+bestFmeasure=0
 if t1 < t2:
-	optthreshold,bestFmeasure=PredictOpt(optfilename, newtraindataset,trainclassificationfilename,trainclassificationposition,t1,t2,step,mincoverage,classids)
-#compute variation
-jsonvariationfilename=modelname + "/" + basename + ".variation"
-ComputeVariations(jsonvariationfilename,classes,classnames,mincoverage)
-#save config	
-configfilename=modelname + "/" + basename + ".config"
-SaveConfig(configfilename,newtraindataset,optfilename,jsonvariationfilename,trainclassificationfilename,trainclassificationposition,t1,t2,step,mincoverage)
+	#load sequences
+	records=SeqIO.to_dict(SeqIO.parse(newtraindataset, "fasta"))
+	#load similarity matrix
+	if os.path.exists(simfilename):
+		print("Loading similarity matrix " + simfilename)
+		simmatrix=LoadSim(simfilename)
+	else:	
+		print("Computing similarity matrix...")
+		simmatrix=ComputeSim(traindataset,records,mincoverage)
+		print("Save similarity matrix " + simfilename)
+		SaveSim(simmatrix,simfilename)
+	predictiondict=LoadPrediction(optfilename)
+	PredictOpt(predictiondict,simmatrix,records,classes,t1,t2,step,mincoverage)
+	SavePrediction(predictiondict,optfilename)
+	#save config	
+	configfilename=modelname + "/" + basename + ".config"
+	SaveConfig(configfilename,newtraindataset,simfilename,optfilename,trainclassificationfilename,trainclassificationposition,t1,t2,step,mincoverage)
 	
-print("The optimal threshold for classification at position " + str(trainclassificationposition) + ": " + str(optthreshold) + ". Best F-measure: " + str(bestFmeasure))
-print("The results is saved in the folder " + modelname + ".") 
+	print("The optimal threshold for classification at position " + str(trainclassificationposition) + ": " + str(predictiondict['cut-off']) + ". Best F-measure: " + str(predictiondict['confidence']))
+	print("The results is saved in the folder " + modelname + ".") 
 	
 
