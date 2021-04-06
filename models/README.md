@@ -16,10 +16,6 @@ To classify the test dataset using the classifier obtained after the training:
 
 The result will be saved in the file testdataset.traindataset_genus_cnn_classifier.classified.
 
-If we wish to calculate the BLAST similarity score for the predictions with a probability >= proba_threshold, then use the following command:
-
-*CNN/classifyCNN.py -c traindataset_genus_cnn_classifier -i testdataset.fas -mp proba_threshold*
-
 ## Training and classifying using the DBN model
 
 To train the DBN model at the genus level, use the following command:
@@ -37,11 +33,6 @@ To classify the test dataset using the classifier obtained after the training:
 *DBN/classifyDBN.py -c traindataset_genus_dbn_classifier -i testdataset.fas*
 
 The result will be saved in the file testdataset.traindataset_genus_dbn_classifier.classified.
-
-If we wish to calculate the BLAST similarity score for the predictions with a probability >= proba_threshold, then use the following command:
-
-*DBN/classifyDBN.py -c traindataset_genus_dbn_classifier -i testdataset.fas -mp proba_threshold*
-
 
 ## Training and classifying using the BLAST classification
 
@@ -67,4 +58,8 @@ To classify the test dataset using the classifier obtained by the RDP training, 
 
 *RDP/classifyRDP.py -c RDP_classifier -i testdataset.fas -rdp path_to_the_file_classifer.jar*
 
+## Assigning the classified sequences
 
+If we wish to calculate the BLAST similarity score for the predictions with a probability >= proba_threshold, then use the following command:
+
+*CNN/classifyCNN.py -i testdataset.traindataset_genus_cnn_classifier.classified traindataset.fas -c traindataset.classification -p 5 -i -mp proba_threshold*
