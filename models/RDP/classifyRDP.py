@@ -3,6 +3,8 @@
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
+if sys.version_info[0] >= 3:
+	unicode = str
 import math
 import numpy as np
 import os, argparse
@@ -21,37 +23,14 @@ parser.add_argument('-i','--input', required=True, help='the fasta file')
 parser.add_argument('-rdp','--rdpclassifierpath', required=True, help='the path of the RDP classifier classifier.jar.')
 parser.add_argument('-o','--out', help='The folder name containing the model and associated files.') #optional
 parser.add_argument('-c','--classifier', required=True, help='the folder containing the classifier.')
-parser.add_argument('-cn','--classification', required=True, help='the classification file in tab. format.')
-parser.add_argument('-p','--classificationpos', required=True, type=int, default=0, help='the classification position to load the classification.')
-parser.add_argument('-mp','--minproba', type=float, default=1.1, help='Optional. The minimum probability for verifying the classification results.')
-parser.add_argument('-mc','--mincoverage', type=int, default=300, help='Optinal. Minimum coverage required for the identitiy of the BLAST comparison.')
-#parser.add_argument('-j','--variation', help='Optinal. The json file containing the variation within each class of the classifier.')
 
 args=parser.parse_args()
+
 testfastafilename= args.input
 rdpclassifierpath = args.rdpclassifierpath
 modelname=args.classifier
-minprobaforBlast=args.minproba
-mincoverage = args.mincoverage
-classificationfilename=args.classification
-classificationposition=args.classificationposition
 rdp_output=args.out
 
-#modelname = sys.argv[1]
-#rdpclassifierpath = sys.argv[2] # the path to the rdp classifier file classifier.jar
-#testfastafilename=sys.argv[3]
-#minprobaforBlast=1.1 #search for best match of the sequences by BLast only when minprobabilityforBlast <=1.0
-#if len(sys.argv)>4:
-#	minprobaforBlast=float(sys.argv[4])
-#classificationfilename=""
-#if len(sys.argv) > 5:
-#	classificationfilename=sys.argv[5] #
-#classificationposition=0
-#if len(sys.argv) >6: 
-#	classificationposition=sys.argv[6] 
-#mincoverage=300 #for ITS sequences, used only for comparing the sequences with BLAST
-#if len(sys.argv)>7:
-#	mincoverage=int(sys.argv[7])
 
 def GetBase(filename):
 	if "." not in filename:
@@ -78,9 +57,13 @@ def LoadConfig(modelname):
 			classificationfilename=texts[1].rstrip()
 		if texts[0]=="Column number to be classified":
 			classificationpos=int(texts[1].rstrip())
+		if texts[0]=="RDP fasta filename":
+			rdpfastafilename=texts[1].rstrip()
+		if texts[0]=="RDP ID filename":
+			rdpidfilename=texts[1].rstrip()
 		if texts[0]=="Classes filename":
-			jsonfilename=texts[1].rstrip()
-	return jsonfilename,classifiername,classificationfilename,classificationpos
+			jsonfilename=texts[1].rstrip()	
+	return jsonfilename,classifiername,classificationfilename,classificationpos,rdpfastafilename,rdpidfilename
 
 def LoadClassification(seqids,classificationfilename,pos):
 	kingdompos=0
@@ -231,98 +214,22 @@ def GetPredictedLabels(testseqids,rdpclassifiedfilename):
 	rdpfile.close()
 	return predlabels,scores,ranks
 
-def CreateFastaFile(taxonname,classeswithsequences,seqno):
-	taxonname=unicode(taxonname,errors='ignore')
-	fastafilename=""
-	sequences=[]
-	if taxonname in classeswithsequences.keys():
-		sequences=classeswithsequences[taxonname]
-		if len(sequences) >0:
-			fastafilename=taxonname.replace(" ","") + ".fasta"
-			fastafile=open(fastafilename,"w")
-			if (seqno > 0) and (len(sequences) >seqno):
-				#select randomly 500 sequences to compare
-				selectedlist=random.sample(range(0, len(sequences)), k=seqno)
-				for i in selectedlist:
-					sequence=sequences[i]
-					seqid=sequence['id']
-					seq=sequence['seq']
-					fastafile.write(">" + seqid + "\n")
-					fastafile.write(seq + "\n")
-			else:	
-				for sequence in sequences:
-					seqid=sequence['id']
-					seq=sequence['seq']
-					fastafile.write(">" + seqid + "\n")
-					fastafile.write(seq + "\n")
-			fastafile.close()
-	return fastafilename,len(sequences)
-
-def ComputeBestLocalBLASTScore(testrecord,predictedname,classeswithsequences,mincoverage):
-	#Create fasta file of the test record 
-	queryname=testrecord.id + "." + "fasta"
-	if "|" in testrecord.id:
-		queryname=testrecord.id.split("|")[0] + "." + "fasta"
-	SeqIO.write(testrecord, queryname , "fasta")
-	#Create fasta file of predictedname
-	refname,numberofsequences=CreateFastaFile(predictedname,classeswithsequences,0)
-	if refname=="":
-		return "",0,0,0,0
-	#Blast the test record to fastafilename:
-	#makedbcommand = "makeblastdb -in " + refname + " -dbtype \'nucl\' " +  " -out db"
-	#os.system(makedbcommand)
-	blastoutput = testrecord.id 
-	if "|" in testrecord.id:
-		blastoutput=blastoutput.split("|")[0]
-	blastoutput= blastoutput + ".blast.out"
-	#blastcommand = "blastn -query " + queryname + " -db  db -outfmt 6 -out " + blastoutput
-	blastcommand = "blastn -query " + queryname + " -subject " + refname  + " -task blastn-short -outfmt 6 -out " + blastoutput
-	os.system(blastcommand)
-	#read output of Blast
-	blastoutputfile = open(blastoutput)
-	bestlocalscore=0
-	bestlocalsim=0
-	bestlocalcoverage=0
-	bestrefid=""
-	for line in blastoutputfile:
-		words = line.split("\t")
-		pos1 = int(words[6])
-		pos2 = int(words[7])
-		iden = float(words[2]) 
-		sim=float(iden)/100
-		coverage=abs(pos2-pos1)
-		refid=words[1]
-		score=sim
-		if coverage < mincoverage:
-				score=float(score * coverage)/mincoverage
-		if score > bestlocalscore:
-			bestrefid=refid
-			bestlocalscore=score
-			bestlocalsim=sim
-			bestlocalcoverage=coverage
-	os.system("rm " + blastoutput)
-	os.system("rm " + queryname)
-	os.system("rm " + refname)
-	return bestrefid,bestlocalscore,bestlocalsim,bestlocalcoverage,numberofsequences
-
-def SavePrediction(minprobaforBlast,mincoverage,classeswithsequences,testseqids,testlabels,predlabels,probas,outputname):
+def SavePrediction(classdict,testseqids,testlabels,predlabels,probas,outputname):
 	output=open(outputname,"w")
-	if minprobaforBlast <=1.0:
-		output.write("Index\tSequenceID\tClassification\tPrediction\tProbability\tlocal BLAST local score\tBLAST local sim\tBLAST local coverage\tNumber of sequences to be compared\tBest match ID\n")
-	else:
-		output.write("Index\tSequenceID\tClassification\tPrediction\tProbability\n")	
+	output.write("SequenceID\tGiven classification\tPrediction\tFull classification of prediction\tProbability\n")
+	i=0
+	keys=classdict.keys()
 	for i in range(0,len(testseqids)):
 		seqid=testseqids[i]
 		giventaxonname= testlabels[i]
 		predictedname=predlabels[i]
 		proba=probas[i]
-		if minprobaforBlast <= 1.0 and proba >= minprobaforBlast:
-			bestrefseqID,bestlocalscore,bestlocalsim,localcoverage,numberofsequences=ComputeBestLocalBLASTScore(testseqrecords[i],predictedname,classeswithsequences,mincoverage)
-			output.write(str(i) + "\t" + seqid + "\t" + giventaxonname + "\t"  + predictedname + "\t" + str(proba) + "\t" + str(bestlocalscore) + "\t" + str(bestlocalsim) + "\t" + str(localcoverage) + "\t" + str(numberofsequences) + "\t" + bestrefseqID + "\n")			
-		else:
-			output.write(str(i) + "\t" + seqid + "\t" + giventaxonname + "\t"  + predictedname + "\t" + str(proba) + "\n")
+		#predictedname=predictedname.encode('ascii', 'ignore')	
+		classification=classdict[predictedname]['classification']
+		output.write(seqid + "\t" + giventaxonname + "\t"  + predictedname + "\t"+ classification + "\t" + str(proba) + "\n")
 		i=i+1
 	output.close()
+		
 ##############################################################################
 # MAIN
 ##############################################################################
@@ -330,14 +237,14 @@ basefilename=GetBase(testfastafilename)
 
 
 #load config of the model
-jsonfilename,classifiername,classificationfilename,classificationposition=LoadConfig(modelname)
+classesfilename,classifiername,classificationfilename,classificationpos,rdpfastafilename,rdpidfilename=LoadConfig(modelname)
 
 #load seq records
 seqrecords = list(SeqIO.parse(testfastafilename, "fasta"))
 testseqids = GetSeqIDs(seqrecords)
 
 #load given taxonomic classifcation of the test dataset
-testspecies,testgenera,testfamilies,testorders,testclasses,testphyla,testkingdoms,testclassifications,testlabels,rank=LoadClassification(testseqids,classificationfilename,int(classificationposition))
+testspecies,testgenera,testfamilies,testorders,testclasses,testphyla,testkingdoms,testclassifications,testlabels,rank=LoadClassification(testseqids,classificationfilename,classificationpos)
 
 # run the model
 basename=modelname
@@ -353,16 +260,12 @@ testcommand="java -Xmx1g -jar " + rdpclassifierpath + "/classifier.jar classify 
 os.system(testcommand)
 testseqids = GetSeqIDs(seqrecords)
 predlabels,probas,ranks=GetPredictedLabels(testseqids,rdpclassifiedfilename)
-classeswithsequences={}
-testseqrecords=[]
-if minprobaforBlast <=1.0:
-	#load classes
-	with open(jsonfilename) as json_file:
-		testseqrecords=list(SeqIO.parse(testfastafilename, "fasta"))
-		classeswithsequences = json.load(json_file)
+#load ref class dict
+classdict={}
+with open(classesfilename) as classesfile:
+	classdict = json.load(classesfile)
+SavePrediction(classdict,testseqids,testlabels,predlabels,probas,rdp_output)
 print("The result is saved in the file: " + rdp_output)
-SavePrediction(minprobaforBlast,mincoverage,classeswithsequences,testseqids,testlabels,predlabels,probas,rdp_output)
-
 
 
 

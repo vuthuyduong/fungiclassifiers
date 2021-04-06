@@ -3,6 +3,8 @@
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
+if sys.version_info[0] >= 3:
+	unicode = str
 #import math
 #import numpy as np
 import os, argparse
@@ -19,14 +21,14 @@ parser=argparse.ArgumentParser(prog='trainRDP.py',
 
 parser.add_argument('-i','--input', required=True, help='the fasta file')
 parser.add_argument('-o','--out', help='The folder name containing the model and associated files.') #optional
-parser.add_argument('-c','--classification', required=True, help='the classification file in tab. format.')
-parser.add_argument('-p','--classificationpos', required=True, type=int, default=0, help='the classification position to load the classification.')
+parser.add_argument('-c','--classification', help='the classification file in tab. format.')
+parser.add_argument('-p','--classificationpos', type=int,required=True,default=0, help='the classification position to load the classification.')
 parser.add_argument('-rdp','--rdpclassifierpath', required=True, help='the path of the RDP classifier classifier.jar.')
 
 args=parser.parse_args()
 fastafilename= args.input
 classificationfilename=args.classification
-classificationposition=args.classificationpos
+classificationpos=args.classificationpos
 rdpclassifierpath = args.rdpclassifierpath
 modelname=args.out
 
@@ -123,13 +125,13 @@ def GetUnidentifiedKingdomName(seqid,species,genus,family,order,bioclass,phylum)
 
 
 def LoadClassification(seqids,classificationfilename,pos):
-	kingdompos=0
-	phylumpos=1 #the position of the phyla in the classification file
-	classpos=2
-	orderpos=3
-	familypos=4
-	genuspos=5
-	speciespos=6
+	kingdompos=1
+	phylumpos=2 #the position of the phyla in the classification file
+	classpos=3
+	orderpos=4
+	familypos=5
+	genuspos=6
+	speciespos=7
 	species=[""] * len(seqids)
 	genera=[""] * len(seqids)
 	families=[""] * len(seqids)
@@ -167,6 +169,8 @@ def LoadClassification(seqids,classificationfilename,pos):
 				if word=="kingdom":
 					kingdompos=i
 				i=i+1
+			if pos==0:
+				pos=speciespos
 			continue 
 		kingdom=""
 		phylum=""
@@ -357,9 +361,7 @@ def GenerateTaxaIDs(species,genera,families,orders,classes,phyla,kingdoms,taxaid
 	taxaidfile.close()
 
 def GenerateRDFFastaFile(seqids,labels,classifications,trainfastafilename,rdpfastafilename):
-	classes=[]
-	seqIDList=[]
-	seqList=[]
+	classdict={}
 	rdpfastafile = open(rdpfastafilename,"w")
 	trainfastafile =open(trainfastafilename)
 	seqid=""
@@ -367,90 +369,54 @@ def GenerateRDFFastaFile(seqids,labels,classifications,trainfastafilename,rdpfas
 	for line in trainfastafile:
 		if line.startswith(">"):
 			#add the previous sequences to classes
-			if seqid !="":
-				i=seqids.index(seqid)
-				label=labels[i]
-				if label in classes:
-					j=classes.index(label)
-					seqIDList[j].append(seqid)
-					seqList[j].append(seq)
-				else:
-					classes.append(label)
-					subseqids=[]
-					subseqids.append(seqid)
-					seqIDList.append(subseqids)
-					subseqs=[]
-					subseqs.append(seq)
-					seqList.append(subseqs)
 			seqid=line.rstrip().replace(">","")
-			seq=""
-			rdpfastafile.write(">" + seqid + "\t" + classifications[seqids.index(seqid)] + "\n")
+			i=seqids.index(seqid)
+			label=labels[i]
+			classification=classifications[i]
+			if label in classdict.keys():
+				if len(classification) > len(classdict[label]['classification']):
+					classdict[label]['classification']=classification
+				classdict[label]['seqids'].append(seqid)
+			else:
+				classdict.setdefault(label,{})
+				classdict[label]['classification']=classification
+				classdict[label]['seqids']=[seqid]
+			rdpfastafile.write(">" + seqid + "\t" + classification + "\n")
 		else:
 			seq=seq + line.rstrip()
-			rdpfastafile.write(line)
-	if seqid !="":
-		i=seqids.index(seqid)
-		label=labels[i]
-		if label in classes:
-			j=classes.index(label)
-			seqIDList[j].append(seqid)
-			seqList[j].append(seq)
-		else:
-			classes.append(label)
-			subseqids=[]
-			subseqids.append(seqid)
-			seqIDList.append(subseqids)
-			subseqs=[]
-			subseqs.append(seq)
-			seqList.append(subseqs)			
+			rdpfastafile.write(line)	
 	rdpfastafile.close()
 	trainfastafile.close()
-	return classes,seqIDList,seqList
-
+	return classdict
+	
 def GetSeqIDs(seqrecords):
 	seqids=[]
 	for seqrecord in seqrecords:
 		seqids.append(seqrecord.id)
 	return seqids
 
-def SaveClasses(jsonfilename,classnames,seqIDList,seqList):
-	#create json dict
-	taxadict={}
-	i=0
-	count=0
-	for classname in classnames:	
-		#classname=unicode(classname,errors='ignore')
-		currentclass=[]
-		j=0	   
-		for seqID in seqIDList[i]:
-			seq=seqList[i][j]
-			currentclass.append({'id': seqID, 'seq': seq})
-			j=j+1
-			count=count+1            
-		taxadict[classname]=currentclass
-		i=i+1
-	#write to file
+def SaveClasses(jsonfilename,classdict):
+	#write json dict
 	with open(jsonfilename,"w") as json_file:
-		json.dump(taxadict,json_file,encoding='latin1')
+		json.dump(classdict,json_file,encoding='latin1')
 
-def SaveConfig(configfilename,classifiername,fastafilename,jsonfilename,classificationfilename,classificationpos):
+def SaveConfig(configfilename,classifiername,fastafilename,jsonfilename,classificationfilename,classificationpos,rdpfastafilename,rdpidfilename):
 	if not classifiername.startswith("/"):
 		classifiername=os.getcwd() + "/" + classifiername
 	if not fastafilename.startswith("/"):
 		fastafilename=os.getcwd() + "/" + fastafilename
-	if not jsonfilename.startswith("/"):
-		jsonfilename=os.getcwd() + "/" + jsonfilename
 	if not classificationfilename.startswith("/"):
 		classificationfilename=os.getcwd() + "/" + classificationfilename
 	model="rdp"
 	#save the config:classifierfilename, model, classificationfilename,classificationpos,k-mer
 	configfile=open(configfilename,"w")
-	configfile.write("Classifier name: " + classifiername + "\n")
 	configfile.write("Model: " + model + "\n")
 	configfile.write("Fasta filename: " + fastafilename + "\n")
 	configfile.write("Classification filename: " + classificationfilename + "\n")
 	configfile.write("Column number to be classified: " + str(classificationpos) + "\n")
 	configfile.write("Classes filename: " + jsonfilename + "\n")
+	configfile.write("RDP fasta filename: " + rdpfastafilename + "\n")
+	configfile.write("RDP ID filename: " + rdpidfilename + "\n")
 	configfile.close()
 
 ##############################################################################
@@ -459,22 +425,11 @@ def SaveConfig(configfilename,classifiername,fastafilename,jsonfilename,classifi
 basefilename=GetBase(fastafilename)
 #load seq records
 seqrecords = list(SeqIO.parse(fastafilename, "fasta"))
-
-#train the rdp classifier
-rdpfastafilename= basefilename + ".rdp.fasta"
-rdptaxaidfilename = basefilename +  ".rdp.tid"
-
 #train the data using rdp model
 trainseqids = GetSeqIDs(seqrecords)
 
 #load taxonomic classifcation of the train dataset
-species,genera,families,orders,classes,phyla,kingdoms,classifications,trainlabels,level=LoadClassification(trainseqids,classificationfilename,int(classificationposition))
-
-#generate the taxaid file for the rdp model
-GenerateTaxaIDs(species,genera,families,orders,classes,phyla,kingdoms,rdptaxaidfilename)
-
-#generate fasta file for the rdp model
-classes,seqIDList,seqList=GenerateRDFFastaFile(trainseqids,trainlabels,classifications,fastafilename,rdpfastafilename)
+species,genera,families,orders,classes,phyla,kingdoms,classifications,trainlabels,level=LoadClassification(trainseqids,classificationfilename,classificationpos)
 
 #save model
 if modelname==None or modelname=="":
@@ -483,18 +438,33 @@ if modelname==None or modelname=="":
 		modelname=basefilename + "_" + level + "_rdp_classifier"
 if os.path.isdir(modelname) == False:
 	os.system("mkdir " + modelname)	
-basename=basefilename + "_" + level + "_rdp_classifier"
+basename=modelname
+if "/" in modelname:
+	basename=modelname[modelname.rindex("/")+1:]	
+#basename=basefilename + "_" + level + "_rdp_classifier"
 if "/" in basename:
 	basename = basename[len(basename)-basename.rindex("/"):]
 os.system("cp " + rdpclassifierpath + "/classifier/samplefiles/rRNAClassifier.properties " + modelname + "/")
+
+#train the rdp classifier
+rdpfastafilename= modelname + "/" + basefilename + ".rdp.fasta"
+rdptaxaidfilename = modelname + "/" + basefilename +  ".rdp.tid"
+
+#generate the taxaid file for the rdp model
+GenerateTaxaIDs(species,genera,families,orders,classes,phyla,kingdoms,rdptaxaidfilename)
+
+#generate fasta file for the rdp model
+classdict=GenerateRDFFastaFile(trainseqids,trainlabels,classifications,fastafilename,rdpfastafilename)
+
+
 traincommand="java -Xmx1g -jar " + rdpclassifierpath + "/classifier.jar train -o " + modelname + " -s " + rdpfastafilename + " -t " + rdptaxaidfilename
 os.system(traincommand)
 #save seqids for each classification
 jsonfilename=modelname + "/" + basename + ".classes"
-SaveClasses(jsonfilename,classes,seqIDList,seqList)
+SaveClasses(jsonfilename,classdict)
 #save config	
 configfilename=modelname + "/" + basename + ".config"
-SaveConfig(configfilename,modelname,fastafilename,jsonfilename,classificationfilename,classificationposition)
+SaveConfig(configfilename,modelname,fastafilename,jsonfilename,classificationfilename,classificationpos,rdpfastafilename,rdptaxaidfilename)
 print("The classifier is saved in the folder " + modelname + ".")
 	
 	
