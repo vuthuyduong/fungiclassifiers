@@ -36,7 +36,8 @@ parser.add_argument('-c','--classificationfile', required=True, help='the classi
 parser.add_argument('-mp','--minproba', type=float, default=0, help='The minimum probability for verifying the classification results.')
 parser.add_argument('-mc','--mincoverage', type=int, default=300, help='Minimum coverage required for the identitiy of the BLAST comparison.')
 parser.add_argument('-m','--maxseqno', type=int, default=0, help='Maximum number of the sequences of the predicted taxon name from the classification file will be selected for the comparison to find the best match. If it is not given, all the sequences will be selected.')
-parser.add_argument('-cutoffs','--cutoffs', help='The json file containing the cutoffs of the predicted taxa.')
+parser.add_argument('-cutoffs','--cutoffs', help='The json file containing the cutoffs to assign the sequences to the predicted taxa.')
+parser.add_argument('-cutoff','--cutoff', type=float, default=0,help='The cutoff to assign the sequences to predicted taxa. If the cutoffs file is not given, this value will be taken for sequence assignment.')
 
 args=parser.parse_args()
 fastafilename= args.input
@@ -44,6 +45,7 @@ referencefastafilename= args.reference
 outputname=args.out
 minprobaforBlast=args.minproba
 mincoverage = args.mincoverage
+cutoff=args.cutoff
 cutoffsfilename=args.cutoffs
 classificationfilename=args.classificationfile
 predictionfilename=args.predictionfile
@@ -222,7 +224,7 @@ def ComputeBestLocalBLASTScore(testrecord,reffilename,mincoverage):
 	os.system("rm " + queryname)
 	return bestrefid,bestlocalscore,bestlocalsim,bestlocalcoverage
 
-def Assign(classeswithsequences,classifications,classificationpos,rank,minprobaforBlast,mincoverage,cutoffs,seqids,seqdict,labels,pred_labels,probas,maxseqno,outputname):
+def Assign(classeswithsequences,classifications,classificationpos,rank,minprobaforBlast,mincoverage,cutoffs,cutoff,seqids,seqdict,labels,pred_labels,probas,maxseqno,outputname):
 	output=open(outputname,"w")
 	output.write("Index\tSequenceID\tGiven classification\tPrediction\tFull classification of prediction\tProbability\tAssigned\tReferenceID\tCut-off\tConfidence\tBLAST score\tBLAST sim\tBLAST coverage\n")
 	i=0
@@ -234,13 +236,13 @@ def Assign(classeswithsequences,classifications,classificationpos,rank,minprobaf
 		score=0
 		sim=0
 		coverage=0
+		classification=""
 		if proba >= minprobaforBlast:
 			reffilename,numberofsequences=CreateFastaFile(predictedname,classeswithsequences,maxseqno)
 			refid,score,sim,coverage=ComputeBestLocalBLASTScore(seqdict[seqid],reffilename,mincoverage)
 			os.system("rm " + reffilename)	
 			if sys.version_info[0] < 3:
 				predictedname=unicode(predictedname,'latin1')
-			cutoff=0
 			confidence=0
 			rank_cutoff=0
 			rank_confidence=0
@@ -259,9 +261,12 @@ def Assign(classeswithsequences,classifications,classificationpos,rank,minprobaf
 			if sys.version_info[0] < 3:	
 				predictedname=predictedname.encode('ascii', 'ignore')
 				classification=classifications[predictedname]
-			assignment="no"		
-			if score >=cutoff:
-				assignment="yes"	
+			assignment=""		
+			if cutoff >0:
+				if score >=cutoff:
+					assignment="yes"	
+				else:
+					assignment="no"
 		output.write(seqid + "\t" + giventaxonname + "\t"  + predictedname + "\t"+ classification + "\t" + str(proba) + "\t" + assignment + "\t" + refid + "\t" + str(cutoff) + "\t" + str(confidence) + "\t" + str(score) + "\t" + str(sim) + "\t" + str(coverage) + "\n")			
 		i=i+1
 	output.close()
@@ -323,5 +328,5 @@ if __name__ == "__main__":
 	if cutoffsfilename!="" and cutoffsfilename!=None:
 		with open(cutoffsfilename) as cutoffsfile:
 			cutoffs = json.load(cutoffsfile)
-	Assign(classeswithsequences,classifications,classificationpos,rank,minprobaforBlast,mincoverage,cutoffs,seqids,seqdict,labels,pred_labels,probas,maxseqno,outputname)
+	Assign(classeswithsequences,classifications,classificationpos,rank,minprobaforBlast,mincoverage,cutoffs,cutoff,seqids,seqdict,labels,pred_labels,probas,maxseqno,outputname)
 	print("The result is saved in the file: " + outputname)
