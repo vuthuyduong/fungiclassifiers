@@ -120,14 +120,12 @@ def load_data(modelname,fastafilename,classificationfilename,classificationpos):
 	level=""
 	newseqrecords=[]
 	classdict={}
-	header=""
+	header=next(classificationfile)
+	texts=header.split("\t")
+	if classificationpos < len(texts):
+		level=texts[classificationpos].rstrip()
 	for line in classificationfile:
 		texts=line.split("\t")
-		if line.startswith("#"):
-			header=line
-			if classificationpos < len(texts):
-				level=texts[classificationpos].rstrip()
-			continue 		
 		seqid=texts[0].replace(">","").rstrip()
 		if not seqid in seqrecords.keys():
 			continue
@@ -155,6 +153,7 @@ def load_data(modelname,fastafilename,classificationfilename,classificationpos):
 	newfastafilename=modelname + "/" + basename + "." + str(classificationpos) + ".fasta"
 	#write selected sequences to file
 	SeqIO.write(newseqrecords, newfastafilename, "fasta")
+	
 	return newfastafilename,seqids,classnames,classdict,level
 
 def load_matrix(matrixfilename,seqids,classnames,classdict):
@@ -242,6 +241,8 @@ if __name__ == "__main__":
 		modelname=filename.replace(".","_") + "_cnn_classifier" 
 		if level !="":
 			modelname=filename + "_" + level + "_cnn_classifier"
+	if os.path.isdir(modelname) == False:
+		os.system("mkdir " + modelname)		
 	basename=modelname
 	if "/" in modelname:
 		basename=modelname[modelname.rindex("/")+1:]
@@ -263,9 +264,6 @@ if __name__ == "__main__":
 	model.fit(traindata, trainlabels_bin, nb_epoch=100, batch_size=20, verbose = 0)
 	#save model
 #	modelname=filename.replace(".","_") + "_cnn_classifier"
-	
-	if os.path.isdir(modelname) == False:
-		os.system("mkdir " + modelname)
 	#save model
 	classifiername=modelname + "/" + basename + ".classifier"
 	model.save(classifiername)
