@@ -6,6 +6,7 @@
 # AUTHOR: Duong Vu
 # CREATE DATE: 07 June 2019
 import sys
+#sys.setdefaultencoding('utf8')
 if sys.version_info[0] >= 3:
 	unicode = str
 import os, argparse
@@ -111,16 +112,15 @@ def loadData(matrixfilename,data_max,classifications,allseqids):
 
 def SavePrediction(classdict,testseqIDs,testtaxa,pred_labels,probas,outputname):
 	output=open(outputname,"w")
-	output.write("SequenceID\tGiven classification\tPrediction\tFull classification of prediction\tProbability\n")
+	output.write("#SequenceID\tGiven label\tPrediction\tFull classification\tProbability\n")
 	i=0
 	keys=classdict.keys()
 	for seqid in testseqIDs:
 		proba =max(probas[i])
 		giventaxonname=testtaxa[i]
 		predictedname =keys[pred_labels[i]]
-		#predictedname=predictedname.encode('ascii', 'ignore')	
 		classification=classdict[predictedname]['classification']
-		output.write(seqid + "\t" + giventaxonname + "\t"  + predictedname + "\t"+ classification + "\t" + str(proba) + "\n")
+		output.write((seqid + "\t" + giventaxonname + "\t"  + predictedname + "\t"+ classification + "\t" + str(proba) + "\n").encode('ascii', 'ignore')	)
 		i=i+1
 	output.close()
 
