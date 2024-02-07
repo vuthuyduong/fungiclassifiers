@@ -12,6 +12,10 @@ The [models](https://github.com/vuthuyduong/fungiclassifiers/tree/master/models)
 
 The [data](https://github.com/vuthuyduong/fungiclassifiers/tree/master/data) folder consists of the three datasets: the yeast and mould datasets which were checked and validated by the specialists at the Westerdijk Fungal Biodiversity Institute, and the "Top most wanted fungi" (UNITE Community 2017) for the evaluation on different classification methods. The yeast dataset consisting of ~4000 ITS sequences that has been used in (Vu et al. 2018) and released as a subset in (Vu et al. 2016). This dataset was used for the evaluation of different classification methods in which most of the sequences in the test dataset has a label in the train dataset. The mould dataset has been released recently in (Vu et al. 2019). This dataset was to used to train the deep learning models for classifying the "Top most wanted fungi" data whose sequences are unrepresented in the train dataset.
 
+# Dependencies
+
+Tensorflow
+
 # Usages:
 
 ## Training and classifying using the CNN model:
@@ -59,12 +63,7 @@ Vu, D., Groenewald, M. & Verkley, G. Convolutional neural networks improve funga
 
 https://www.nature.com/articles/s41598-020-69245-y
 
-## Implementation
-The training, classifying in the Classification, and the Evaluation of the BLAST, RDP, CNN and DBN models were implemented in Python 2.7. We used the Keras library (www.keras.io) with tensorflow backend for CNN and the code available at https://github.com/albertbup/deep-belief-network for DBN. The RDP Clas-sifier was downloaded from https://github.com/rdpstaff/classifier.  For the BLAST classification, BLAST version 2.6.0 was installed. 
 
-## Dependencies
-
-Tensorflow
 
 ## Contact person 
 
