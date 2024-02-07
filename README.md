@@ -28,11 +28,11 @@ where the classification file will have a format like the .classifiction file in
 
 If we want to use another k-mer such as 8 for example, then use the following command:
 
-*CNN/trainCNN.py -i traindataset.fas -c traindataset.classification -rank species -k 6*
+*models/CNN/trainCNN.py -i traindataset.fas -c traindataset.classification -rank species -k 6*
 
 To classify the test dataset using the classifier obtained after the training:
 
-*CNN/classifyCNN.py -c traindataset_genus_cnn_classifier -i testdataset.fas*
+*models/CNN/classifyCNN.py -c traindataset_genus_cnn_classifier -i testdataset.fas*
 
 The result will be saved in the file testdataset.traindataset_genus_cnn_classifier.out.
 
@@ -40,17 +40,17 @@ The result will be saved in the file testdataset.traindataset_genus_cnn_classifi
 
 To train the DBN model at the genus level, use the following command:
 
-*DBN/trainDBN.py -i traindataset.fas -c traindataset.classification -rank species* 
+*models/DBN/trainDBN.py -i traindataset.fas -c traindataset.classification -rank species* 
 
 Here the k-mer size is set to 6 as default. 
 
 If we want to use another k-mer such as 8 for example, then use the following command:
 
-*DBN/trainDBN.py -i traindataset.fas -c traindataset.classification -rank species 5 -k 6*
+*models/DBN/trainDBN.py -i traindataset.fas -c traindataset.classification -rank species -k 6*
 
 To classify the test dataset using the classifier obtained after the training:
 
-*DBN/classifyDBN.py -c traindataset_genus_dbn_classifier -i testdataset.fas*
+*models/DBN/classifyDBN.py -c traindataset_genus_dbn_classifier -i testdataset.fas*
 
 The result will be saved in the file testdataset.traindataset_genus_dbn_classifier.out.
 
