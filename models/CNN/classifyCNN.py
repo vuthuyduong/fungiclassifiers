@@ -8,15 +8,7 @@ import sys
 if sys.version_info[0] >= 3:
 	unicode = str
 import os, argparse
-#from keras.models import Sequential
-#from keras.layers import Dense
-#from keras.layers import Convolution1D
-#from keras.datasets import mnist
-#from keras.layers import Dropout, Activation, Flatten
-#from keras.layers import Convolution1D, MaxPooling1D
-#from keras.utils import np_utils
-#from keras import backend as K
-from keras.models import load_model
+import tensorflow as tf
 import numpy as np
 import json
 #from Bio import SeqIO
@@ -52,30 +44,41 @@ def LoadConfig(modelname):
 	classifiername=""
 	jsonfilename=""
 	classificationfilename=""
-	classificationpos=0
 	data_max=0
 	k=6
+	rank=""
+	classificationpos=-1
 	configfile=open(configfilename)
 	for line in configfile:
 		texts=line.split(": ")
 		if texts[0]=="Classifier name":
 			classifiername=texts[1].rstrip()
+			if "/" in classifiername:
+				classifiername=modelname + "/" + classifiername[classifiername.rindex("/")+1:]
 		if texts[0]=="K-mer number":
 			k=int(texts[1].rstrip())
 		if texts[0]=="Classification filename":
-			classificationfilename=texts[1].rstrip()
+			classificationfilename= texts[1].rstrip()
+			if "/" in classificationfilename:
+				classificationfilename=modelname + "/" + classificationfilename[classificationfilename.rindex("/")+1:]
 		if texts[0]=="Data max":
 			data_max=float(texts[1].rstrip())
+		if texts[0]=="Rank to be classified":
+			rank=texts[1].rstrip()
 		if texts[0]=="Column number to be classified":
-			classificationpos=int(texts[1].rstrip())
+			classificationpos=int(texts[1].rstrip())	
 		if texts[0]=="Classes filename":
-			jsonfilename=texts[1].rstrip()
-	return jsonfilename,classifiername,classificationfilename,classificationpos,k,data_max
+			jsonfilename= texts[1].rstrip()
+			if "/" in jsonfilename:
+				jsonfilename=modelname + "/" + jsonfilename[jsonfilename.rindex("/")+1:]
+	if classificationpos==-1 and rank!="":
+		classificationpos=GetClassificationPos(classificationfilename,rank)		
+	return jsonfilename,classifiername,classificationfilename,rank,classificationpos,k,data_max
 
 def loadClassification(classificationfilename,classificationpos):
 	#load classification
 	allseqids=[]
-	classificationfile= open(classificationfilename)
+	classificationfile= open(classificationfilename, errors='ignore')
 	classifications=[]
 	for line in classificationfile:
 		texts=line.split("\t")
@@ -116,21 +119,35 @@ def SavePrediction(classdict,testseqIDs,testtaxa,pred_labels,probas,outputname):
 	output=open(outputname,"w")
 	output.write("#SequenceID\tGiven label\tPrediction\tFull classification\tProbability\n")
 	i=0
-	keys=classdict.keys()
+	keys=list(classdict.keys())
 	for seqid in testseqIDs:
 		proba =probas[i][pred_labels[i]]
 		giventaxonname=testtaxa[i]
 		predictedname =keys[pred_labels[i]]
 		classification=classdict[predictedname]['classification']
-		output.write((seqid + "\t" + giventaxonname + "\t"  + predictedname + "\t"+ classification + "\t" + str(proba) + "\n").encode('ascii', 'ignore')	)
+		output.write(seqid + "\t" + giventaxonname + "\t"  + predictedname + "\t"+ classification + "\t" + str(proba) + "\n")
 		i=i+1
 	output.close()
-	
+
+def GetClassificationPos(classificationfilename,rank):
+	classificationfile=open(classificationfilename, errors='ignore')
+	header=next(classificationfile)
+	texts=header.split("\t")
+	i=0
+	classificationpos=-1
+	for text in texts:
+		text=text.rstrip()
+		if text.lower()==rank.lower():
+			classificationpos=i
+		i=i+1	
+	classificationfile.close()
+	return classificationpos
+
 if __name__ == "__main__":
 	path=sys.argv[0]
 	path=path[:-(len(path)-path.rindex("/")-1)]
 	#load config of the model
-	classesfilename,classifiername,classificationfilename,classificationpos,k,data_max=LoadConfig(modelname)
+	classesfilename,classifiername,classificationfilename,rank,classificationpos,k,data_max=LoadConfig(modelname)
 	#load ref class dict
 	classdict={}
 	with open(classesfilename) as classesfile:
@@ -144,17 +161,17 @@ if __name__ == "__main__":
 	os.system(command)
 	testseqIDs,testinputs,testtaxa=loadData(matrixfilename,data_max,classifications,allseqids)
 	#load model
-	model = load_model(classifiername)
-	#predict labels for test dataset
+	model = tf.keras.models.load_model(classifiername)
+	# Predict labels for test dataset
 	testinputs = testinputs.reshape(testinputs.shape + (1,))
-	pred_labels = model.predict_classes(testinputs,verbose = 0)
-	probas = model.predict_proba(testinputs)
+	probas = model.predict(testinputs, verbose=0)
+	pred_labels = np.argmax(probas, axis=1)
 	#save prediction
 	basename=GetBase(classifiername)
 	if "/" in basename:
 		basename=basename[basename.rindex("/")+1:]
 	if reportfilename==None or reportfilename=="":	
-		reportfilename=GetBase(testfastafilename) +  "." + basename + ".classified"
-	
+		reportfilename=GetBase(testfastafilename) +  "." + basename + ".out"
+		
 	SavePrediction(classdict,testseqIDs,testtaxa,pred_labels,probas,reportfilename)
 	print("The result is saved in the file: " + reportfilename)
