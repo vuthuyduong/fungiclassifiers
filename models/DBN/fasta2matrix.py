@@ -168,7 +168,8 @@ def make_sequence_vector (sequence,
                     kmer = rev_kmer
 
             # Increment the count.
-            if (kmer_counts[bin_num].has_key(kmer)):
+            #if (kmer_counts[bin_num].has_key(kmer)):
+            if (kmer in kmer_counts[bin_num].keys()):    
                 kmer_counts[bin_num][kmer] += 1
             else:
                 kmer_counts[bin_num][kmer] = 1
@@ -204,7 +205,8 @@ def make_sequence_vector (sequence,
     sequence_vector = []
     for i_bin in range(0, num_bins):
         for kmer in kmer_list:
-            if (kmer_counts[i_bin].has_key(kmer)):
+            #if (kmer_counts[i_bin].has_key(kmer)):
+            if (kmer in kmer_counts[i_bin].keys()):    
                 sequence_vector.append(kmer_counts[i_bin][kmer] + pseudocount)
             else:
                 sequence_vector.append(pseudocount)
@@ -515,7 +517,7 @@ if (revcomp == 1):
 
 # Print the corner of the matrix.
 
-outfile=open(output_filename,"wb")
+outfile=open(output_filename,"w")
 
 # Print the title row.
 

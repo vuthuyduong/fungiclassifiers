@@ -8,12 +8,14 @@ if sys.version_info[0] >= 3:
 import os, argparse
 import numpy as np
 np.random.seed(1337)  # for reproducibility
-#from sklearn.datasets import load_digits
-#from sklearn.model_selection import StratifiedKFold
-#from sklearn.metrics.classification import accuracy_score
-from dbn.tensorflow import SupervisedDBNClassification
+#from dbn.tensorflow import SupervisedDBNClassification
 import json
 from Bio import SeqIO
+
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from sklearn.preprocessing import OneHotEncoder
 
 parser=argparse.ArgumentParser(prog='trainDBN.py', 
 							   usage="%(prog)s [options] -i fastafile -c classificationfile -p classificationposition",
@@ -24,13 +26,14 @@ parser=argparse.ArgumentParser(prog='trainDBN.py',
 parser.add_argument('-i','--input', required=True, help='the fasta file')
 parser.add_argument('-o','--out', help='The folder name containing the model and associated files.') #optional
 parser.add_argument('-c','--classification', required=True, help='the classification file in tab. format.')
-parser.add_argument('-p','--classificationpos', required=True, type=int, default=0, help='the classification position to load the classification.')
 parser.add_argument('-k','--kmer', type=int, default=6, help='the k-mer for the representation of the sequences.')
+parser.add_argument('-rank','--rank',default="species", help='the rank to load taxonomic names for the prediction.')
+
 
 args=parser.parse_args()
 fastafilename= args.input
 classificationfilename=args.classification
-classificationpos=args.classificationpos
+rank=args.rank
 k = args.kmer
 modelname=args.out
 
@@ -41,6 +44,58 @@ modelname=args.out
 #if len(sys.argv) >4:
 #	k= int(sys.argv[4])
 
+class DBN:
+	def __init__(self, hidden_layers_structure, learning_rate_rbm=0.05, learning_rate=0.1,
+                 n_epochs_rbm=10, n_iter_backprop=500, batch_size=32, activation_function='relu',
+                 dropout_p=0.1, verbose=False):
+		self.hidden_layers_structure = hidden_layers_structure
+		self.learning_rate_rbm = learning_rate_rbm
+		self.learning_rate = learning_rate
+		self.n_epochs_rbm = n_epochs_rbm
+		self.n_iter_backprop = n_iter_backprop
+		self.batch_size = batch_size
+		self.activation_function = activation_function
+		self.dropout_p = dropout_p
+		self.verbose = verbose
+
+	def fit(self, X_train, y_train):
+		# Preprocess target labels
+		enc = OneHotEncoder()
+		y_train_encoded = enc.fit_transform(y_train.reshape(-1, 1)).toarray()
+
+		# Initialize DBN model
+		model = Sequential()
+
+		# Add hidden layers
+		for units in self.hidden_layers_structure:
+			model.add(Dense(units, activation=self.activation_function))
+			model.add(Dropout(self.dropout_p))
+
+		# Add output layer
+		model.add(Dense(y_train_encoded.shape[1], activation='softmax'))
+
+		# Compile model
+		model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
+		              loss='categorical_crossentropy',
+		              metrics=['accuracy'])
+
+		# Train the model
+		model.fit(X_train, y_train_encoded, epochs=self.n_iter_backprop, batch_size=self.batch_size,
+		          verbose=self.verbose)
+
+		self.model = model
+
+	def predict(self, X_test):
+		# Make predictions
+		return self.model.predict(X_test)
+
+	def predict_classes(self, X_test):
+		# Make class predictions
+		return tf.argmax(self.model.predict(X_test), axis=1)
+
+	def save_model(self, filepath):
+		self.model.save(filepath)
+        
 def GetBase(filename):
 	return filename[:-(len(filename)-filename.rindex("."))]
 	
@@ -109,25 +164,39 @@ def GetTaxonomicClassification(classificationpos,header,texts):
 	else:
 		classification=texts[classificationpos]
 	return classification
+
+def GetClassificationPos(classificationfilename,rank):
+	classificationfile=open(classificationfilename, errors='ignore')
+	header=next(classificationfile)
+	texts=header.split("\t")
+	i=0
+	classificationpos=-1
+	for text in texts:
+		text=text.rstrip()
+		if text.lower()==rank.lower():
+			classificationpos=i
+		i=i+1	
+	classificationfile.close()
+	if classificationpos <0:
+		print("Please specify a rank for building the model.")
+		os.system(exit)	
+	return classificationpos
 	
-def load_data(fastafilename,classificationfilename,classificationpos):
+def load_data(fastafilename,classificationfilename,rank):
 	#load seqrecords
 	seqids=[]
 	seqrecords=SeqIO.to_dict(SeqIO.parse(fastafilename, "fasta"))
 	#load classification
-	classificationfile= open(classificationfilename)
+	classificationfile= open(classificationfilename, errors='ignore')
+	header=next(classificationfile)
+	texts=header.split("\t")
 	classnames=[]
-	level=""
 	newseqrecords=[]
 	classdict={}
 	header=""
+	classificationpos=GetClassificationPos(classificationfilename,rank)
 	for line in classificationfile:
 		texts=line.split("\t")
-		if line.startswith("#"):
-			header=line
-			if classificationpos < len(texts):
-				level=texts[classificationpos].rstrip()
-			continue 		
 		seqid=texts[0].replace(">","").rstrip()
 		if not seqid in seqrecords.keys():
 			continue
@@ -141,7 +210,7 @@ def load_data(fastafilename,classificationfilename,classificationpos):
 			classnames.append(classname)
 			classification=GetTaxonomicClassification(classificationpos,header,texts)
 			if classname in classdict.keys():
-				if len(classification) > classdict[classname]['classification']:
+				if len(classification) > len(classdict[classname]['classification']):
 					classdict[classname]['classification']=classification
 				classdict[classname]['seqids'].append(seqid)
 			else:	
@@ -152,7 +221,7 @@ def load_data(fastafilename,classificationfilename,classificationpos):
 	newfastafilename=GetBase(fastafilename) + "." + str(classificationpos) + ".fasta"
 	#write selected sequences to file
 	SeqIO.write(newseqrecords, newfastafilename, "fasta")
-	return newfastafilename,seqids,classnames,classdict,level
+	return newfastafilename,seqids,classnames,classdict
 
 def load_matrix(matrixfilename,seqids,classnames,classdict):
 	#load matrix
@@ -164,7 +233,7 @@ def load_matrix(matrixfilename,seqids,classnames,classdict):
 		elements=vector.split(",")
 		seqid=elements[0]
 		taxonname= classnames[seqids.index(seqid)]
-		index=classdict.keys().index(taxonname)
+		index=list(classdict.keys()).index(taxonname)
 		Y.append(index)
 		X.append(elements[1:])
 	X=np.array(X,dtype=float)
@@ -174,18 +243,41 @@ def load_matrix(matrixfilename,seqids,classnames,classdict):
 	X = X/data_max
 	return X,Y,len(set(classnames)),len(X[0]),data_max
 
-def create_model():
-	classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
-                                             learning_rate_rbm=0.05,
-                                             learning_rate=0.1,
-                                             n_epochs_rbm=10,
-                                             n_iter_backprop=500,
-                                             batch_size=32,
-                                             activation_function='relu',
-                                             dropout_p=0.1,verbose=False)
-	return classifier
+# def create_model():
+#  	classifier = SupervisedDBNClassification(hidden_layers_structure=[256, 256],
+#                                               learning_rate_rbm=0.05,
+#                                               learning_rate=0.1,
+#                                               n_epochs_rbm=10,
+#                                               n_iter_backprop=500,
+#                                               batch_size=32,
+#                                               activation_function='relu',
+#                                               dropout_p=0.1,verbose=False)
+#  	return classifier
 
-def SaveConfig(configfilename,classifiername,fastafilename,jsonfilename,classificationfilename,classificationpos,kmer,data_max):
+# def create_model(input_length):
+#     model = Sequential([
+#         Dense(256, activation='relu', input_shape=(input_length,1)),  # Assuming input_shape is defined
+#         Dense(256, activation='relu'),
+#         Dropout(0.1),  # Add dropout layer with 0.1 dropout rate
+#         Dense(nb_classes, activation='softmax')  # Assuming nb_classes is defined
+#     ])
+#     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.1),
+#                   loss='categorical_crossentropy',
+#                   metrics=['accuracy'])
+#     return model
+
+def create_model():
+ 	classifier = DBN(hidden_layers_structure=[256, 256],
+                                              learning_rate_rbm=0.05,
+                                              learning_rate=0.1,
+                                              n_epochs_rbm=10,
+                                              n_iter_backprop=500,
+                                              batch_size=32,
+                                              activation_function='relu',
+                                              dropout_p=0.1,verbose=False)
+ 	return classifier
+
+def SaveConfig(configfilename,classifiername,fastafilename,jsonfilename,classificationfilename,rank,kmer,data_max):
 	if not classifiername.startswith("/"):
 		classifiername=os.getcwd() + "/" + classifiername
 	if not fastafilename.startswith("/"):
@@ -203,39 +295,38 @@ def SaveConfig(configfilename,classifiername,fastafilename,jsonfilename,classifi
 	configfile.write("K-mer number: " + str(kmer) + "\n")
 	configfile.write("Fasta filename: " + fastafilename + "\n")
 	configfile.write("Classification filename: " + classificationfilename + "\n")
-	configfile.write("Column number to be classified: " + str(classificationpos) + "\n")
+	configfile.write("Rank to be classified: " + rank + "\n")
 	configfile.write("Classes filename: " + jsonfilename + "\n")
 	configfile.close()	
 
-def GetLevel(classificationfilename,classificationpos):
-	classificationfile=open(classificationfilename)
-	header=next(classificationfile)
-	if header.startswith("#"):
-		level=header.split("\t")[classificationpos]				     
-		level=level.rstrip()
-	else:
-		level=str(classificationpos)   
-	return level
+# def GetLevel(classificationfilename,classificationpos):
+# 	classificationfile=open(classificationfilename)
+# 	header=next(classificationfile)
+# 	if header.startswith("#"):
+# 		level=header.split("\t")[classificationpos]				     
+# 		level=level.rstrip()
+# 	else:
+# 		level=str(classificationpos)   
+# 	return level
 
 def SaveClasses(jsonfilename,classdict):
 	#write json dict
 	with open(jsonfilename,"w") as json_file:
-		json.dump(classdict,json_file,encoding='latin1')
+		json.dump(classdict,json_file)
 		
 if __name__ == "__main__":
 	path=sys.argv[0]
 	path=path[:-(len(path)-path.rindex("/")-1)]
-	level=GetLevel(classificationfilename,classificationpos)
 	filename=GetBase(fastafilename)
 	if modelname==None or modelname=="":
 		modelname=filename.replace(".","_") + "_dbn_classifier" 
-		if level !="":
-			modelname=filename + "_" + level + "_dbn_classifier"
+		if rank !="":
+			modelname=filename + "_" + rank + "_dbn_classifier"
 	basename=modelname
 	if "/" in modelname:
 		basename=modelname[modelname.rindex("/")+1:]
 	#load data
-	newfastafilename,seqids,classnames,classdict,level = load_data(fastafilename,classificationfilename,classificationpos)
+	newfastafilename,seqids,classnames,classdict = load_data(fastafilename,classificationfilename,rank)
 	#represent sequences as matrix of k-mer frequencies
 	matrixfilename=filename + "." + str(k) + ".matrix"
 	command=path + "fasta2matrix.py " +  str(k) + " " + newfastafilename + " " + matrixfilename
@@ -256,13 +347,15 @@ if __name__ == "__main__":
 		os.system("mkdir " + modelname)
 	#save model
 	classifiername=modelname + "/" + basename + ".classifier"
-	model.save(classifiername)
+	model.save_model(classifiername)
 	#save seqids for each classification
 	jsonfilename=modelname + "/" + basename + ".classes"
 	SaveClasses(jsonfilename,classdict)
+	#save classification file:
+	os.system("cp " + classificationfilename + " " + modelname)
 	#save config	
 	configfilename=modelname + "/" + basename + ".config"
-	SaveConfig(configfilename,classifiername,fastafilename,jsonfilename,classificationfilename,classificationpos,k,data_max)
+	SaveConfig(configfilename,classifiername,fastafilename,jsonfilename,classificationfilename,rank,k,data_max)
 	print("The classifier is saved in the folder " + modelname + ".")
 	
 
