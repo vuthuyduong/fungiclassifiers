@@ -1,14 +1,16 @@
 # Fungiclassifiers
 
+# News:
+The codes for creating CNN and DBN classifiers have been updated with Tensorflow instead of using Keras.
+For classifying the sequences based on BLAST, we have developed a new tool called [dnabarcoder](https://github.com/vuthuyduong/dnabarcoder) that enables us to compute similarity cut-offs for different clades of reference/training datasets. Based on the computed similarity cut-offs we can assign the sequences to the taxonomic group of their best matches.
+
+The code for creating CNN and DBN classifiers has been updated to use TensorFlow instead of Keras. Additionally, for classifying sequences based on BLAST, we have developed a new tool called [dnabarcoder](https://github.com/vuthuyduong/dnabarcoder). This tool enables us to compute similarity cut-offs for different clades of reference/training datasets. Based on these computed similarity cut-offs, we can assign sequences to the taxonomic group of their best matches. It was shown in Vu et al. (2022) that dnabarcoder improves significantly the accuracy and precision of classification.
+
 Fungiclassifiers is the official implementation for the evaluation of the BLAST classification (Altschul et al. 1977), naive Bayesian RDP classifier (Wang et al. 2007), and two deep learning based classifiers using two different models namely convolutional neural network (CNN) (LeCun et al. 2015) and deep belief network (DBN) (Hinton et al. 2006). We aimed to study if deep learning can improve fungal classification. Fungiclassifiers consists of four folders: model, evaluation, data, and Classifiers.
 
 The [models](https://github.com/vuthuyduong/fungiclassifiers/tree/master/models) folder consists of training and classifying scripts of each of the classification models.
 
-The [evaluation](https://github.com/vuthuyduong/fungiclassifiers/tree/master/evaluation) folder consists of scripts for the evaluation of each of the classification models on the same traing and testing dataset.
-
 The [data](https://github.com/vuthuyduong/fungiclassifiers/tree/master/data) folder consists of the three datasets: the yeast and mould datasets which were checked and validated by the specialists at the Westerdijk Fungal Biodiversity Institute, and the "Top most wanted fungi" (UNITE Community 2017) for the evaluation on different classification methods. The yeast dataset consisting of ~4000 ITS sequences that has been used in (Vu et al. 2018) and released as a subset in (Vu et al. 2016). This dataset was used for the evaluation of different classification methods in which most of the sequences in the test dataset has a label in the train dataset. The mould dataset has been released recently in (Vu et al. 2019). This dataset was to used to train the deep learning models for classifying the "Top most wanted fungi" data whose sequences are unrepresented in the train dataset.
-
-The [classifiers](https://github.com/vuthuyduong/fungiclassifiers/tree/master/classifiers) folder consists of the CNN and DBN classifiers that used the two recently released barcode datasets in (Vu et al. 2016) and in (Vu et al. 2019) for training for yeast and mould classification.
 
 ## Citation
 
@@ -21,17 +23,9 @@ https://www.nature.com/articles/s41598-020-69245-y
 ## Implementation
 The training, classifying in the Classification, and the Evaluation of the BLAST, RDP, CNN and DBN models were implemented in Python 2.7. We used the Keras library (www.keras.io) with tensorflow backend for CNN and the code available at https://github.com/albertbup/deep-belief-network for DBN. The RDP Clas-sifier was downloaded from https://github.com/rdpstaff/classifier.  For the BLAST classification, BLAST version 2.6.0 was installed. 
 
-## Installing necessary packages using Conda
+## Dependencies
 
-conda install keras
-
-conda install scikit-learn
-
-conda install spicy
-
-conda install Theano
-
-conda install Biopython
+Tensorflow
 
 ## Contact person 
 
@@ -54,4 +48,5 @@ Vu, D., Georgievska, S., Szoke, S., et al. (2018). fMLC: Fast Multi-Level Cluste
 
 Vu, D., Groenewald, M., de Vries, M., et al. (2019). Large-scale analysis of fila-mentous fungal DNA barcodes reveals thresholds for species and higher tax-on delimitation. Studies in Mycology 92:135-154.
 
+Vu, D., Nilsson, R.H., Verkley, G. (2022). dnabarcoder: an open-source software package for analyzing and predicting DNA sequence similarity cut-offs for fungal sequence identification. Molecular Ecology Resources. https://doi.org/10.1111/1755-0998.13651
 
