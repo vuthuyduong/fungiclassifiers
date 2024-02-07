@@ -1,10 +1,10 @@
-# Fungiclassifiers
+
 
 # News:
-The codes for creating CNN and DBN classifiers have been updated with Tensorflow instead of using Keras.
-For classifying the sequences based on BLAST, we have developed a new tool called [dnabarcoder](https://github.com/vuthuyduong/dnabarcoder) that enables us to compute similarity cut-offs for different clades of reference/training datasets. Based on the computed similarity cut-offs we can assign the sequences to the taxonomic group of their best matches.
 
 The code for creating CNN and DBN classifiers has been updated to use TensorFlow instead of Keras. Additionally, for classifying sequences based on BLAST, we have developed a new tool called [dnabarcoder](https://github.com/vuthuyduong/dnabarcoder). This tool enables us to compute similarity cut-offs for different clades of reference/training datasets. Based on these computed similarity cut-offs, we can assign sequences to the taxonomic group of their best matches. It was shown in Vu et al. (2022) that dnabarcoder improves significantly the accuracy and precision of classification.
+
+# Fungiclassifiers
 
 Fungiclassifiers is the official implementation for the evaluation of the BLAST classification (Altschul et al. 1977), naive Bayesian RDP classifier (Wang et al. 2007), and two deep learning based classifiers using two different models namely convolutional neural network (CNN) (LeCun et al. 2015) and deep belief network (DBN) (Hinton et al. 2006). We aimed to study if deep learning can improve fungal classification. Fungiclassifiers consists of four folders: model, evaluation, data, and Classifiers.
 
