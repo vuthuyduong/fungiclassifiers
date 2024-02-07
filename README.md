@@ -2,7 +2,7 @@
 
 # News:
 
-The code for creating CNN and DBN classifiers has been updated to use TensorFlow instead of Keras. Additionally, for classifying sequences based on BLAST, we have developed a new tool called [dnabarcoder](https://github.com/vuthuyduong/dnabarcoder). This tool enables us to compute similarity cut-offs for different clades of reference/training datasets. Based on these computed similarity cut-offs, we can assign sequences to the taxonomic group of their best matches. It was shown in Vu et al. (2022) that dnabarcoder improves significantly the accuracy and precision of classification.
+The code for creating CNN and DBN classifiers has been updated to use TensorFlow. (The old version used Keras). Additionally, for classifying sequences based on BLAST, we have developed a new tool called [dnabarcoder](https://github.com/vuthuyduong/dnabarcoder). This tool enables us to compute similarity cut-offs for different clades of reference/training datasets. Based on these computed similarity cut-offs, we can assign sequences to the taxonomic group of their best matches. It was shown in Vu et al. (2022) that dnabarcoder improves significantly the accuracy and precision of classification.
 
 # Fungiclassifiers:
 
